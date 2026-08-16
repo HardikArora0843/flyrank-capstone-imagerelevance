@@ -1,6 +1,6 @@
 # Build Log
 
-This file records the implementation history, verification results, mistakes, corrections, engineering decisions, and lessons learned during development of FlyRank AI Capstone 3.
+This file records the implementation history, verification results, mistakes, corrections, engineering decisions, deployment work, production verification, and lessons learned during development of FlyRank AI Capstone 3.
 
 The project is an image relevance and auto-tagging backend that uses:
 
@@ -12,6 +12,7 @@ The project is an image relevance and auto-tagging backend that uses:
 - Inngest
 - Zod
 - Jest / Supertest
+- Render
 
 The core objective is to recommend semantically relevant images for articles while preventing unsafe recommendations through deterministic mismatch guards and human review.
 
@@ -837,11 +838,11 @@ Best Practices for Remote Work
 
 These records contained structured metadata and embeddings.
 
-### Remaining limitation
+### Remaining limitation at this phase
 
-A separate direct Gemini article-analysis request was not recorded as final evidence.
+A separate direct Gemini article-analysis request was not recorded as final evidence at this point.
 
-However, the service behavior is covered by automated tests and its persisted outputs are used by the live evaluation.
+However, the service behavior was covered by automated tests and its persisted outputs were used by the live evaluation.
 
 ---
 
@@ -1464,33 +1465,603 @@ No ESLint errors were reported.
 - Documented Gemini Vision verification.
 - Documented asynchronous image processing.
 - Distinguished live verification from mocked/local verification.
-- Documented known limitations.
+- Documented deployment verification.
+- Documented production API verification.
+- Documented production matching verification.
+- Documented production job verification.
+- Documented production usage verification.
+- Documented production `no_confident_match` behavior.
+- Documented final project status.
 
-### Documentation principle
 
-The documentation deliberately avoids claiming external integrations are live-verified unless there is actual evidence.
 
-The project distinguishes between:
+# 2026-08-16
+
+## Phase 16 — Render Deployment
+
+### Objective
+
+Deploy the completed backend publicly so that the API can be accessed outside the local development environment.
+
+### Deployment platform
+
+The application was deployed using:
 
 ```text
-IMPLEMENTED
+Render
 ```
 
+### Production URL
+
 ```text
-AUTOMATED TESTED
+https://flyrank-capstone-imagerelevance.onrender.com
 ```
+
+### Deployment architecture
+
+The deployed service contains the same backend application used during local verification:
+
+```text
+Public Client
+      |
+      v
+Render
+      |
+      v
+Express API
+      |
+      +-------------------+
+      |                   |
+      v                   v
+MongoDB              Cloudinary
+      |
+      +-------------------+
+      |
+      v
+Inngest
+      |
+      v
+Gemini
+```
+
+### Root route behavior
+
+The root route was updated so that:
+
+```http
+GET /
+```
+
+redirects to:
+
+```http
+GET /health
+```
+
+This was done so that opening the public deployment URL displays a positive application status instead of returning a generic API 404 response.
+
+### Production root
+
+```text
+https://flyrank-capstone-imagerelevance.onrender.com/
+```
+
+The root route redirects to:
+
+```text
+/health
+```
+
+### Production health
+
+The production health endpoint:
+
+```http
+GET /health
+```
+
+was successfully verified.
+
+Expected response:
+
+```json
+{
+  "status": "ok"
+}
+```
+
+Result:
+
+```text
+PASS
+```
+
+### Deployment status
 
 ```text
 LIVE VERIFIED
 ```
 
+Deployment is complete.
+
+---
+
+# 2026-08-16
+
+## Phase 17 — Production Deployment Verification
+
+After deployment, the application was tested through the public Render URL.
+
+The purpose of this phase was to verify that deployment was not merely successful at the platform level, but that the actual application functionality remained operational in production.
+
+---
+
+## Production Health Verification
+
+Endpoint:
+
+```http
+GET https://flyrank-capstone-imagerelevance.onrender.com/health
+```
+
+Expected:
+
+```json
+{
+  "status": "ok"
+}
+```
+
+Result:
+
+```text
+LIVE VERIFIED
+```
+
+---
+
+## Production Usage Verification
+
+Endpoint:
+
+```http
+GET /api/usage/summary
+```
+
+Production response included:
+
+```json
+{
+  "summary": {
+    "records": 28,
+    "inputTokens": 7774,
+    "outputTokens": 296,
+    "totalTokens": 10047,
+    "estimatedCost": 0
+  }
+}
+```
+
+This verified that:
+
+```text
+MongoDB
++
+AIUsage persistence
++
+Usage API
+```
+
+were functioning in the deployed environment.
+
+Result:
+
+```text
+LIVE VERIFIED
+```
+
+---
+
+## Production Job Verification
+
+Endpoint:
+
+```http
+GET /api/jobs
+```
+
+Production records included completed image-processing jobs.
+
+Verified example:
+
+```text
+type:
+process_image
+
+status:
+completed
+
+total:
+1
+
+processed:
+1
+
+failed:
+0
+
+flagged:
+0
+
+attempts:
+1
+```
+
+The job contained timestamps for creation, start, and completion.
+
+Result:
+
+```text
+LIVE VERIFIED
+```
+
+---
+
+## Production Matching Verification
+
+Endpoint:
+
+```http
+GET /api/posts/:id/images
+```
+
+was executed against the deployed application.
+
+Three important production cases were verified.
+
+### Red Fox
+
+```text
+status:
+matched
+```
+
+Accepted candidate:
+
+```text
+subject:
+red fox
+
+similarity:
+0.42131531009290035
+
+guardStatus:
+accepted
+
+decision:
+recommended
+```
+
+Result:
+
+```text
+CORRECT
+```
+
+### Gray Wolf
+
+```text
+status:
+matched
+```
+
+Accepted candidate:
+
+```text
+subject:
+gray wolf
+
+similarity:
+0.42640793873841476
+
+guardStatus:
+accepted
+
+decision:
+recommended
+```
+
+Result:
+
+```text
+CORRECT
+```
+
+### Remote Work
+
+```text
+status:
+no_confident_match
+
+suggestions:
+[]
+```
+
+All available animal/product candidates were rejected.
+
+The strongest candidate had approximately:
+
+```text
+similarity:
+0.2912505493332135
+```
+
+The candidate was rejected because of similarity and metadata mismatches.
+
+Result:
+
+```text
+CORRECT
+```
+
+---
+
+# 2026-08-16
+
+## Phase 18 — Production Mismatch Guard Verification
+
+The deployed mismatch guard was tested against incorrect candidates.
+
+For the red fox article, the gray wolf image produced:
+
+```text
+similarityScore:
+0.3358349472638014
+```
+
+The configured similarity threshold is:
+
+```text
+0.4
+```
+
+The candidate was therefore rejected.
+
+Production response contained:
+
+```text
+guardStatus:
+rejected
+```
+
 and:
 
 ```text
-PENDING
+decision:
+rejected
 ```
 
-This prevents documentation from overstating the maturity of the system.
+Reasons included:
+
+```text
+Similarity 0.336 is below threshold 0.4
+
+Subject mismatch:
+expected red fox,
+detected gray wolf
+```
+
+This verifies that the production system does not blindly select the highest semantic similarity image.
+
+Result:
+
+```text
+LIVE VERIFIED
+```
+
+---
+
+# 2026-08-16
+
+## Phase 19 — Production No-Confident-Match Verification
+
+The remote-work article was tested against the deployed image collection.
+
+The post expected:
+
+```text
+subject:
+remote work
+
+category:
+business
+```
+
+Available candidates included:
+
+```text
+golden retriever
+ASUS TUF gaming laptop
+gray wolf
+red fox
+```
+
+The candidates were rejected because of:
+
+```text
+similarity below threshold
+subject mismatch
+category mismatch
+```
+
+The final production result was:
+
+```text
+status:
+no_confident_match
+```
+
+with:
+
+```text
+suggestions:
+[]
+```
+
+This confirms the intended safety behavior:
+
+```text
+No safe candidate
+      ↓
+no_confident_match
+```
+
+Result:
+
+```text
+LIVE VERIFIED
+```
+
+---
+
+# 2026-08-16
+
+## Phase 20 — Production Embedding Verification
+
+Production image records were inspected after deployment.
+
+Persisted image records contained:
+
+```text
+embeddingModel:
+gemini-embedding-2
+```
+
+and numeric embedding arrays.
+
+The production matching API successfully consumed those persisted embeddings to calculate semantic similarity.
+
+Examples from production:
+
+```text
+red fox → red fox
+0.42131531009290035
+```
+
+```text
+gray wolf → gray wolf
+0.42640793873841476
+```
+
+This verifies that the production matching pipeline is using persisted vectors rather than relying only on mocked or in-memory values.
+
+Result:
+
+```text
+LIVE VERIFIED
+```
+
+---
+
+# 2026-08-16
+
+## Phase 21 — Production Review Verification
+
+The deployed review workflow was verified.
+
+The following behaviors were confirmed:
+
+```text
+Suggestion inspection
+Review creation
+Approval persistence
+Rejection persistence
+Review history retrieval
+Invalid suggestion ID handling
+```
+
+The review workflow remains:
+
+```text
+Recommendation
+      ↓
+Human Reviewer
+      ↓
+Approve / Reject
+      ↓
+Review Record
+      ↓
+Suggestion State
+```
+
+Result:
+
+```text
+LIVE VERIFIED
+```
+
+---
+
+# 2026-08-16
+
+## Phase 22 — Final Production Verification
+
+The final production verification confirmed that the major application layers work together after deployment.
+
+Verified:
+
+```text
+Public Render deployment
+        PASS
+
+Root route
+        PASS
+
+Root → /health redirect
+        PASS
+
+Production health
+        PASS
+
+MongoDB connectivity
+        PASS
+
+MongoDB persistence
+        PASS
+
+Cloudinary-backed images
+        PASS
+
+Gemini-backed processing
+        PASS
+
+Embedding persistence
+        PASS
+
+Inngest job records
+        PASS
+
+AI usage tracking
+        PASS
+
+Matching engine
+        PASS
+
+Mismatch guard
+        PASS
+
+Suggestion persistence
+        PASS
+
+Human review
+        PASS
+
+No-confident-match behavior
+        PASS
+
+Production evaluation
+        PASS
+```
 
 ---
 
@@ -1506,6 +2077,7 @@ The completed core system follows:
                               ▼
                     ┌───────────────────┐
                     │ Express Backend   │
+                    │     on Render     │
                     └─────────┬─────────┘
                               │
               ┌───────────────┼────────────────┐
@@ -1664,7 +2236,11 @@ Gemini Vision
 MongoDB
 live image processing
 live AI usage tracking
+live embeddings
 live matching
+live review workflow
+Render deployment
+production APIs
 ```
 
 This distinction is important for honest engineering documentation.
@@ -1798,9 +2374,65 @@ Human Review
 Evaluation
  ↓
 Documentation
+ ↓
+Deployment
+ ↓
+Production Verification
 ```
 
 Each major subsystem was tested before moving to the next.
+
+---
+
+## 12. Deployment must be verified at the application level
+
+A successful Render deployment alone is not enough.
+
+The deployed application must be tested through its public URL.
+
+The final verification therefore checked:
+
+```text
+Public URL
+    ↓
+Health
+    ↓
+API
+    ↓
+Database
+    ↓
+Jobs
+    ↓
+AI usage
+    ↓
+Embeddings
+    ↓
+Matching
+    ↓
+Safety guard
+    ↓
+Review
+```
+
+This prevents treating platform-level deployment as proof that the application itself works in production.
+
+---
+
+## 13. The production system should preserve local safety behavior
+
+Deployment should not change the core matching rules.
+
+The production environment successfully preserved:
+
+```text
+similarity threshold
+confidence checks
+subject checks
+category checks
+no_confident_match behavior
+```
+
+The same safety principles demonstrated locally were observed through the deployed API.
 
 ---
 
@@ -1813,6 +2445,12 @@ Express application
         PASS
 
 Health endpoint
+        PASS
+
+Root route
+        PASS
+
+Root → /health redirect
         PASS
 
 Validation
@@ -1857,7 +2495,13 @@ Inngest architecture
 Real image processing
         LIVE VERIFIED
 
+Production job tracking
+        LIVE VERIFIED
+
 AI usage tracking
+        LIVE VERIFIED
+
+Production usage API
         LIVE VERIFIED
 
 Post CRUD
@@ -1870,6 +2514,9 @@ Embedding generation
         LIVE VERIFIED
 
 Embedding persistence
+        LIVE VERIFIED
+
+Production embedding usage
         LIVE VERIFIED
 
 Cosine similarity
@@ -1885,6 +2532,9 @@ Red fox matching
         LIVE VERIFIED
 
 Gray wolf matching
+        LIVE VERIFIED
+
+Incorrect subject rejection
         LIVE VERIFIED
 
 No-confident-match behavior
@@ -1908,8 +2558,11 @@ Invalid suggestion ID handling
 Evaluation dataset
         PASS
 
-Live evaluation
+Local evaluation
         PASS
+
+Production evaluation
+        LIVE VERIFIED
 
 Top-1 precision
         100.00%
@@ -1921,8 +2574,11 @@ Automated tests
 ESLint
         PASS
 
-Deployment
-        PENDING
+Render deployment
+        LIVE VERIFIED
+
+Production API
+        LIVE VERIFIED
 ```
 
 ---
@@ -1936,6 +2592,12 @@ Automated Test Suites:
 Automated Tests:
 90 / 90 PASS
 
+Snapshots:
+0
+
+ESLint:
+PASS
+
 Evaluation Cases:
 3
 
@@ -1943,6 +2605,15 @@ Correct Evaluation Cases:
 3
 
 Top-1 Precision:
+100.00%
+
+Production Evaluation Cases:
+3
+
+Correct Production Cases:
+3
+
+Production Top-1 Precision:
 100.00%
 
 Live Gemini Vision:
@@ -1963,45 +2634,235 @@ PASS
 Live Matching:
 PASS
 
+Live Mismatch Guard:
+PASS
+
 Live Human Review:
 PASS
 
-Deployment:
-PENDING
+Live Usage Tracking:
+PASS
+
+Live Job Tracking:
+PASS
+
+Render Deployment:
+LIVE VERIFIED
+
+Production Health:
+PASS
+
+Production API:
+PASS
 ```
 
 ---
 
-# Current Remaining Work
+# Final Deployment Status
 
-The core capstone implementation is complete.
+The deployment phase is complete.
 
-The primary remaining engineering task is:
-
-```text
-PUBLIC DEPLOYMENT
-```
-
-Deployment should not be marked complete until the deployed application successfully responds to:
-
-```http
-GET /health
-```
-
-from a public URL.
-
-After deployment, the final verification should include:
+Production URL:
 
 ```text
-deployed /health
-deployed API
-deployed MongoDB connectivity
-deployed Cloudinary connectivity
-deployed Gemini connectivity
-deployed Inngest processing
+https://flyrank-capstone-imagerelevance.onrender.com
 ```
 
-The local implementation should not be modified merely to claim deployment completion.
+Production health:
+
+```text
+PASS
+```
+
+Production API:
+
+```text
+PASS
+```
+
+Production MongoDB connectivity:
+
+```text
+LIVE VERIFIED
+```
+
+Production Cloudinary-backed image handling:
+
+```text
+LIVE VERIFIED
+```
+
+Production Gemini-backed processing:
+
+```text
+LIVE VERIFIED
+```
+
+Production embedding persistence:
+
+```text
+LIVE VERIFIED
+```
+
+Production job processing/status:
+
+```text
+LIVE VERIFIED
+```
+
+Production AI usage tracking:
+
+```text
+LIVE VERIFIED
+```
+
+Production matching:
+
+```text
+LIVE VERIFIED
+```
+
+Production mismatch guard:
+
+```text
+LIVE VERIFIED
+```
+
+Production human review:
+
+```text
+LIVE VERIFIED
+```
+
+Production evaluation:
+
+```text
+LIVE VERIFIED
+```
 
 ---
+
+# Current Project Status
+
+The core backend implementation, automated testing, evaluation, deployment, and production verification are complete.
+
+The project is currently:
+
+```text
+COMPLETE
 ```
+
+Final state:
+
+```text
+23 test suites
+90 automated tests
+0 lint errors
+3/3 evaluation cases correct
+100.00% Top-1 precision
+Live MongoDB-backed matching
+Live MongoDB-backed review workflow
+Live AI usage tracking
+Live embedding persistence
+Live asynchronous job tracking
+Live mismatch guard
+Live no-confident-match behavior
+Public Render deployment
+Production API verified
+Production health verified
+Production evaluation verified
+```
+
+There is no remaining deployment task in the current capstone implementation.
+
+The public deployment is live and has been verified through production API requests.
+
+---
+
+# Final Conclusion
+
+FlyRank AI Capstone 3 progressed from a local backend prototype to a fully tested and publicly deployed AI image relevance system.
+
+The final architecture combines:
+
+```text
+Express
+   +
+MongoDB
+   +
+Cloudinary
+   +
+Gemini Vision
+   +
+Gemini Embeddings
+   +
+Inngest
+   +
+Zod
+   +
+Deterministic Matching Guards
+   +
+Human Review
+   +
+AI Usage Tracking
+   +
+Evaluation
+   +
+Render Deployment
+```
+
+The most important engineering principle demonstrated by the project is:
+
+```text
+Do not blindly trust semantic similarity.
+```
+
+Instead:
+
+```text
+Understand
+    ↓
+Validate
+    ↓
+Embed
+    ↓
+Retrieve
+    ↓
+Rank
+    ↓
+Apply deterministic guard
+    ↓
+Recommend only if safe
+    ↓
+Otherwise:
+no_confident_match
+```
+
+The project successfully demonstrates both sides of intelligent retrieval:
+
+```text
+Finding the correct image
+```
+
+and:
+
+```text
+Correctly refusing an incorrect image
+```
+
+Final verified outcome:
+
+```text
+23/23 test suites passed
+90/90 tests passed
+0 lint errors
+3/3 evaluation cases correct
+100.00% Top-1 precision
+Production deployment LIVE
+Production health VERIFIED
+Production API VERIFIED
+Production matching VERIFIED
+Production safety behavior VERIFIED
+```
+
+**FlyRank AI Capstone 3 — COMPLETE**

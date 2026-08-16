@@ -1,132 +1,284 @@
-Next is **`dataset/README.md`**.
-
-Replace the entire file with this:
-
-```markdown
 # Evaluation Dataset
 
-This directory contains the labeled examples used to evaluate the image-to-post matching engine.
+This directory contains the evaluation dataset used to measure the image relevance and auto-tagging system.
 
-The evaluation dataset is intentionally small and focused on the core safety and relevance requirements of the capstone.
+The dataset is intentionally small and deterministic because the capstone focuses on demonstrating the complete backend pipeline:
+
+```text
+Image Understanding
+        ↓
+Metadata Extraction
+        ↓
+Embedding Generation
+        ↓
+Semantic Matching
+        ↓
+Mismatch Guard
+        ↓
+Recommendation / Rejection
+        ↓
+Evaluation
+```
+
+The evaluation is designed to test both:
+
+1. whether the system can find the correct image
+2. whether the system can correctly reject an incorrect image
 
 ---
 
-## Purpose
+# Dataset Purpose
 
-The evaluation verifies that the matching system can:
+The evaluation dataset verifies that the matching engine can distinguish between:
 
-1. Match an article about a red fox with a red fox image.
-2. Match an article about a gray wolf with a gray wolf image.
-3. Avoid recommending an unrelated animal image for a remote-work article.
-4. Return `no_confident_match` when no candidate passes the mismatch guard.
-5. Rank the correct image as the Top-1 candidate when a valid match exists.
+```text
+correct semantic matches
+```
+
+and:
+
+```text
+semantically weak or subject-incompatible images
+```
+
+The dataset contains three primary evaluation scenarios:
+
+```text
+1. Red fox article → red fox image
+2. Gray wolf article → gray wolf image
+3. Remote work article → no confident image match
+```
+
+The third case is especially important because the system must not force a recommendation when no candidate is sufficiently relevant.
 
 ---
 
-## Dataset Structure
+# Dataset Structure
 
 ```text
 dataset/
 ├── README.md
 ├── evaluation.json
 └── images/
-    ├── dog.jpg
-    ├── gray-wolf.jpg
     ├── red-fox.jpg
+    ├── gray-wolf.jpg
+    ├── dog.jpg
     └── unrelated.jpg
 ```
 
 ---
 
-## Evaluation Cases
+# Evaluation Cases
 
-The current evaluation contains three labeled post-to-image cases.
+## Case 1 — Red Fox
 
-### Case 1: Red Fox
+### Article
 
 ```text
-Post:
 The Behavior of Red Foxes
+```
 
-Expected:
+The article describes red fox behavior and characteristics.
+
+Expected image:
+
+```text
 red-fox.jpg
 ```
 
-The matching engine should identify the red fox image as the Top-1 accepted recommendation.
+Expected subject:
+
+```text
+red fox
+```
+
+Expected category:
+
+```text
+animal
+```
+
+Expected result:
+
+```text
+matched
+```
+
+Expected decision:
+
+```text
+recommended
+```
 
 ---
 
-### Case 2: Gray Wolf
+## Case 2 — Gray Wolf
+
+### Article
 
 ```text
-Post:
 Understanding Gray Wolves
+```
 
-Expected:
+The article describes gray wolves and their characteristics.
+
+Expected image:
+
+```text
 gray-wolf.jpg
 ```
 
-The matching engine should identify the gray wolf image as the Top-1 accepted recommendation.
+Expected subject:
+
+```text
+gray wolf
+```
+
+Expected category:
+
+```text
+animal
+```
+
+Expected result:
+
+```text
+matched
+```
+
+Expected decision:
+
+```text
+recommended
+```
 
 ---
 
-### Case 3: Unrelated Content
+## Case 3 — Remote Work
+
+### Article
 
 ```text
-Post:
 Best Practices for Remote Work
+```
 
-Expected:
+The article is about remote work and business practices.
+
+Expected image:
+
+```text
 none
 ```
 
-The matching engine should not recommend an animal image and should return:
+Expected subject:
+
+```text
+remote work
+```
+
+Expected category:
+
+```text
+business
+```
+
+Because the available candidate images are animals or unrelated products, the system should not force a recommendation.
+
+Expected result:
 
 ```text
 no_confident_match
 ```
 
-This case verifies that the system can safely reject irrelevant candidates instead of returning the highest-scoring image regardless of actual relevance.
-
----
-
-# Evaluation Dataset File
-
-The generated labels are stored in:
-
-```text
-dataset/evaluation.json
-```
-
-Example structure:
+Expected suggestions:
 
 ```json
-[
-  {
-    "name": "red fox article should match red fox image",
-    "postId": "<post-id>",
-    "expectedImageId": "<red-fox-image-id>"
-  },
-  {
-    "name": "gray wolf article should match gray wolf image",
-    "postId": "<post-id>",
-    "expectedImageId": "<gray-wolf-image-id>"
-  },
-  {
-    "name": "remote work article should have no confident animal image match",
-    "postId": "<post-id>",
-    "expectedImageId": null
-  }
-]
+[]
 ```
 
-The IDs are generated from the actual MongoDB records rather than being manually hard-coded.
+This case verifies the rejection behavior of the matching engine.
 
 ---
 
-# Dataset Generation
+# Evaluation Images
 
-The evaluation dataset can be generated from the currently seeded MongoDB data using:
+The dataset contains the following image types.
+
+| Image | Intended Subject | Category | Evaluation Purpose |
+|---|---|---|---|
+| `red-fox.jpg` | Red fox | Animal | Correct red fox match |
+| `gray-wolf.jpg` | Gray wolf | Animal | Correct gray wolf match |
+| `dog.jpg` | Golden retriever | Animal | Incorrect animal candidate |
+| `unrelated.jpg` | ASUS TUF gaming laptop | Product | Category and subject mismatch |
+
+The database also contains additional processed images generated during live testing.
+
+---
+
+# Expected Matching Behavior
+
+The matching engine should not simply select the image with the highest cosine similarity.
+
+The complete decision process is:
+
+```text
+Post
+  ↓
+Post Embedding
+  ↓
+Candidate Image Embeddings
+  ↓
+Cosine Similarity
+  ↓
+Candidate Ranking
+  ↓
+Mismatch Guard
+  ↓
+Accept / Reject
+```
+
+The mismatch guard checks:
+
+```text
+Similarity
+Image Confidence
+Subject Compatibility
+Category Compatibility
+```
+
+Therefore:
+
+```text
+High similarity
+      +
+Incorrect subject
+      ↓
+REJECT
+```
+
+and:
+
+```text
+Low similarity
+      ↓
+REJECT
+```
+
+If no candidate passes the required checks:
+
+```text
+no_confident_match
+```
+
+is returned.
+
+---
+
+# Evaluation Dataset Generation
+
+The evaluation dataset can be generated from the configured MongoDB environment.
+
+Run:
 
 ```bash
 npm run seed:evaluation
@@ -134,115 +286,90 @@ npm run seed:evaluation
 
 The script:
 
-1. Connects to MongoDB.
-2. Finds the required evaluation posts.
-3. Finds the expected image records.
-4. Verifies that expected images have completed processing.
-5. Verifies that expected images contain embeddings.
-6. Writes the resulting MongoDB IDs to `dataset/evaluation.json`.
+1. connects to MongoDB
+2. locates the required posts
+3. locates the required processed images
+4. constructs the evaluation cases
+5. writes the evaluation dataset
 
-The script is implemented in:
+The generated file is:
 
 ```text
-scripts/seedEvaluation.js
+dataset/evaluation.json
 ```
 
 ---
 
 # Running the Evaluation
 
-After the dataset has been generated, run:
+Run:
 
 ```bash
 npm run evaluate
 ```
 
-The evaluation runner is implemented in:
+The evaluator uses the real MongoDB-backed application data.
+
+The evaluation is therefore based on:
 
 ```text
-scripts/evaluate.js
+real persisted posts
+real persisted images
+real persisted embeddings
+real matching logic
+real mismatch guard
+real suggestion decisions
 ```
 
-It executes the actual matching service against every evaluation case.
+It does not rely exclusively on mocked matching behavior.
 
 ---
 
-# Evaluation Method
+# Evaluation Metric
 
-For every test case:
+The primary metric is:
 
 ```text
-Evaluation Case
-      ↓
-Load Post
-      ↓
-Generate/use Post Embedding
-      ↓
-Load Completed Image Candidates
-      ↓
-Calculate Cosine Similarity
-      ↓
-Rank Candidates
-      ↓
-Run Mismatch Guard
-      ↓
-Persist Suggestions
-      ↓
-Determine Top-1 Result
-      ↓
-Compare Against Expected Image
+Top-1 Precision
 ```
 
-The evaluation checks the actual backend matching behavior rather than using mocked results.
+The evaluator checks whether the highest-ranked accepted result matches the expected result.
+
+For cases where the expected result is no match, the evaluator checks whether the system correctly returns:
+
+```text
+no_confident_match
+```
 
 ---
 
-# Top-1 Precision
+# Evaluation Formula
 
-The evaluation calculates:
+For the three-case dataset:
 
 ```text
 Top-1 Precision =
-Correct Top-1 Results / Total Evaluation Cases
+Correct Evaluation Cases / Total Evaluation Cases
 ```
 
-For the current dataset:
+The final verified evaluation was:
 
 ```text
-Evaluation cases:       3
-Correct Top-1 results:  3
-Incorrect results:      0
+Correct Evaluation Cases:
+3
 
-Top-1 precision:        100.00%
+Total Evaluation Cases:
+3
+
+Top-1 Precision:
+100.00%
 ```
 
 ---
 
-# Verified Evaluation Results
+# Verified Evaluation Result
 
-The current live evaluation produced:
-
-```text
-1. red fox article should match red fox image
-   Expected: red fox image
-   Actual:   red fox image
-   Result:   CORRECT
-   Similarity: 0.4213
-
-2. gray wolf article should match gray wolf image
-   Expected: gray wolf image
-   Actual:   gray wolf image
-   Result:   CORRECT
-   Similarity: 0.4264
-
-3. remote work article should have no confident animal image match
-   Expected: none
-   Actual:   none
-   Status:   no_confident_match
-   Result:   CORRECT
-```
-
-Final result:
+The final evaluation produced:
 
 ```text
 Posts evaluated: 3
@@ -252,197 +379,550 @@ Top-1 precision: 100.00%
 
 ---
 
-# Why the Dataset Includes an Unrelated Case
+# Case-by-Case Results
 
-A matching system should not always return an image.
-
-For example:
+## Red Fox
 
 ```text
-Post:
+Article:
+The Behavior of Red Foxes
+
+Expected:
+red fox image
+
+Actual:
+red fox image
+
+Result:
+CORRECT
+```
+
+Observed production similarity:
+
+```text
+0.42131531009290035
+```
+
+The candidate was accepted because:
+
+```text
+Strong semantic similarity
+Subject match
+Category match
+Sufficient image confidence
+```
+
+---
+
+## Gray Wolf
+
+```text
+Article:
+Understanding Gray Wolves
+
+Expected:
+gray wolf image
+
+Actual:
+gray wolf image
+
+Result:
+CORRECT
+```
+
+Observed production similarity:
+
+```text
+0.42640793873841476
+```
+
+The candidate was accepted because:
+
+```text
+Strong semantic similarity
+Subject match
+Category match
+Sufficient image confidence
+```
+
+---
+
+## Remote Work
+
+```text
+Article:
 Best Practices for Remote Work
 
-Available images:
-- red fox
-- gray wolf
-- dog
-- unrelated image
+Expected:
+no image
+
+Actual:
+no confident match
+
+Result:
+CORRECT
 ```
 
-Even if one image has the highest cosine similarity, it should not automatically be recommended.
-
-The mismatch guard evaluates additional signals:
+The strongest available candidate had:
 
 ```text
-Similarity
-Vision confidence
-Subject compatibility
-Category compatibility
+similarity:
+0.2912505493332135
 ```
 
-If no candidate passes these checks, the system returns:
+The configured similarity threshold was:
+
+```text
+0.4
+```
+
+The candidate was rejected.
+
+Additional mismatch reasons included:
+
+```text
+Subject mismatch:
+expected remote work,
+detected golden retriever
+
+Category mismatch:
+expected business,
+detected animal
+```
+
+Final result:
+
+```json
+{
+  "status": "no_confident_match",
+  "suggestions": []
+}
+```
+
+---
+
+# Incorrect Candidate Rejection
+
+The evaluation also demonstrates that incorrect candidates are explicitly rejected.
+
+For the red fox article, the gray wolf candidate produced:
+
+```text
+similarity:
+0.3358349472638014
+```
+
+Configured threshold:
+
+```text
+0.4
+```
+
+Result:
+
+```text
+rejected
+```
+
+Reasons:
+
+```text
+Similarity 0.336 is below threshold 0.4
+Subject mismatch: expected red fox, detected gray wolf
+```
+
+This demonstrates the importance of the mismatch guard.
+
+---
+
+# Production Verification
+
+The same matching behavior was verified against the deployed application.
+
+Production URL:
+
+```text
+https://flyrank-capstone-imagerelevance.onrender.com
+```
+
+Production verification covered:
+
+```text
+Red fox → red fox
+Gray wolf → gray wolf
+Remote work → no confident match
+```
+
+Final production result:
+
+```text
+3/3 correct
+100.00% Top-1 precision
+```
+
+Production status:
+
+```text
+LIVE VERIFIED
+```
+
+---
+
+# Production Matching Evidence
+
+## Red Fox
+
+Production endpoint:
+
+```http
+GET /api/posts/6a80f2b302dea112cbd4e4ab/images
+```
+
+Result:
+
+```text
+status:
+matched
+```
+
+Accepted image:
+
+```text
+red fox
+```
+
+Similarity:
+
+```text
+0.42131531009290035
+```
+
+---
+
+## Gray Wolf
+
+Production endpoint:
+
+```http
+GET /api/posts/6a80f2b802dea112cbd4e4ad/images
+```
+
+Result:
+
+```text
+status:
+matched
+```
+
+Accepted image:
+
+```text
+gray wolf
+```
+
+Similarity:
+
+```text
+0.42640793873841476
+```
+
+---
+
+## Remote Work
+
+Production endpoint:
+
+```http
+GET /api/posts/6a80f2bb02dea112cbd4e4af/images
+```
+
+Result:
+
+```text
+status:
+no_confident_match
+```
+
+Suggestions:
+
+```json
+[]
+```
+
+Result:
+
+```text
+CORRECT
+```
+
+---
+
+# Why the Dataset Includes Negative Cases
+
+A recommendation system should not only be evaluated on its ability to retrieve relevant content.
+
+It must also demonstrate that it can refuse incorrect content.
+
+A weak system might behave like:
+
+```text
+Article
+  ↓
+Find highest similarity
+  ↓
+Always recommend something
+```
+
+This project instead implements:
+
+```text
+Article
+  ↓
+Find candidates
+  ↓
+Rank candidates
+  ↓
+Apply deterministic mismatch guard
+  ↓
+Reject unsafe candidates
+  ↓
+Return no_confident_match when necessary
+```
+
+The remote-work case exists specifically to test this behavior.
+
+---
+
+# Dataset Design Principles
+
+## 1. Small and deterministic
+
+The dataset is intentionally small enough to run quickly and reproduce consistently.
+
+---
+
+## 2. Includes positive examples
+
+Positive cases:
+
+```text
+red fox → red fox
+gray wolf → gray wolf
+```
+
+---
+
+## 3. Includes negative examples
+
+Negative cases include:
+
+```text
+red fox → gray wolf
+red fox → golden retriever
+red fox → gaming laptop
+remote work → animal
+```
+
+---
+
+## 4. Tests semantic similarity and deterministic guards
+
+The dataset is designed so that the matching engine must consider more than embeddings.
+
+The final decision depends on:
+
+```text
+semantic similarity
++
+subject compatibility
++
+category compatibility
++
+vision confidence
+```
+
+---
+
+## 5. Tests rejection behavior
+
+The dataset explicitly verifies:
 
 ```text
 no_confident_match
 ```
 
-This demonstrates the project's primary safety requirement:
-
-> Do not force an image recommendation when the available candidates are not sufficiently relevant.
+instead of requiring the system to always return an image.
 
 ---
 
-# Red Fox vs Gray Wolf Rejection
+# Relationship With MongoDB
 
-The dataset and matching tests also support the core mismatch scenario:
+The evaluation dataset is not intended to replace the application's MongoDB records.
+
+Instead:
 
 ```text
-Red Fox article
-        ↓
-Gray Wolf candidate
-        ↓
-Similarity ranking
-        ↓
-Mismatch Guard
-        ↓
-Rejected
+MongoDB
+   ↓
+Persisted Posts
+   ↓
+Persisted Images
+   ↓
+Persisted Embeddings
+   ↓
+Evaluation
 ```
 
-The wolf image can have meaningful semantic similarity to an article about foxes because both are animals.
+The evaluation script uses the actual application data.
 
-However, semantic similarity alone is insufficient.
+This makes the evaluation representative of the real backend workflow.
 
-The subject compatibility check detects that:
+---
+
+# Relationship With Cloudinary
+
+Image files are stored in Cloudinary during application execution.
+
+MongoDB stores references such as:
 
 ```text
-Post subject:
-fox
-
-Image subject:
-gray wolf
+cloudinaryUrl
+cloudinaryPublicId
 ```
 
-and rejects the candidate.
+The evaluation therefore works with the application's normal image-storage architecture rather than introducing a separate image-loading system.
 
 ---
 
-# Image Files
+# Relationship With Gemini
 
-The dataset currently contains:
-
-### `red-fox.jpg`
-
-Used as the expected positive match for the red fox article.
-
-### `gray-wolf.jpg`
-
-Used as the expected positive match for the gray wolf article and as an important rejection candidate for the red fox scenario.
-
-### `dog.jpg`
-
-Provides an additional animal candidate for ranking and guard evaluation.
-
-### `unrelated.jpg`
-
-Provides a non-animal/unrelated candidate for testing candidate rejection behavior.
-
----
-
-# Important Dataset Rule
-
-The evaluation dataset should contain real labeled examples.
-
-Do not modify `evaluation.json` merely to make the evaluation score higher.
-
-The purpose of the evaluation is to measure the actual behavior of the matching engine.
-
-If the matching logic changes, the evaluation should be rerun and the resulting metrics should be recorded honestly.
-
----
-
-# Adding More Evaluation Cases
-
-Additional cases can be added to:
+Gemini is used for:
 
 ```text
-scripts/seedEvaluation.js
+Image Vision Analysis
+Article Analysis
+Embeddings
 ```
 
-For example:
+The resulting structured metadata and embeddings are persisted in MongoDB.
 
-```javascript
-{
-  name: 'article description',
-  postTitle: 'Example Article',
-  expectedImageFilename: 'example.jpg'
-}
+The evaluation consumes those persisted outputs through the matching engine.
+
+---
+
+# Reproducibility
+
+To reproduce the evaluation locally:
+
+```bash
+npm install
 ```
 
-For a case where no image should be recommended:
+Configure:
 
-```javascript
-{
-  name: 'unrelated article should have no confident image match',
-  postTitle: 'Example Unrelated Article',
-  expectedImageFilename: null
-}
+```text
+.env
 ```
 
-After modifying the evaluation cases:
+with the required:
+
+```text
+MONGODB_URI
+CLOUDINARY_* 
+GEMINI_*
+```
+
+Then run:
 
 ```bash
 npm run seed:evaluation
 npm run evaluate
 ```
 
----
-
-# Recommended Future Dataset Expansion
-
-For a production-quality evaluation, the dataset should eventually include more examples covering:
-
-```text
-Positive matches
-Negative matches
-Low-confidence images
-Category mismatches
-Subject mismatches
-Visually similar but semantically incorrect images
-Unrelated articles
-Multiple valid candidate images
-No available candidates
-```
-
-A larger evaluation set would provide a more reliable estimate of matching quality than the current three-case demonstration dataset.
+The evaluation should use the same application services and matching logic as the running backend.
 
 ---
 
-# Current Dataset Status
+# Expected Final Result
+
+A successful evaluation should produce:
 
 ```text
-Dataset generation:        COMPLETE
-Evaluation runner:         COMPLETE
-MongoDB-backed labels:     VERIFIED
-Live matching evaluation:  VERIFIED
-Evaluation cases:          3
-Correct cases:              3
-Top-1 precision:            100.00%
+Posts evaluated: 3
+Correct top-1 matches: 3
+Top-1 precision: 100.00%
 ```
 
-The current dataset successfully demonstrates the core capstone requirement:
+The expected logical results are:
 
 ```text
-Relevant image
-      ↓
-Correct recommendation
+Red fox article
+    ↓
+Red fox image
+    ↓
+CORRECT
 
-Incorrect image
-      ↓
-Mismatch guard
-      ↓
-Safe rejection
+Gray wolf article
+    ↓
+Gray wolf image
+    ↓
+CORRECT
 
-No suitable image
-      ↓
-no_confident_match
+Remote work article
+    ↓
+No confident image
+    ↓
+CORRECT
+```
+
+---
+
+# Final Dataset Status
+
+```text
+Dataset:
+READY
+
+Evaluation Dataset:
+PASS
+
+Evaluation Script:
+PASS
+
+Evaluation Cases:
+3
+
+Correct Cases:
+3
+
+Top-1 Precision:
+100.00%
+
+Negative Match Testing:
+PASS
+
+No-Confident-Match Testing:
+PASS
+
+Production Evaluation:
+LIVE VERIFIED
+```
+
+The dataset successfully demonstrates both sides of the image relevance problem:
+
+```text
+Find the right image
+```
+
+and:
+
+```text
+Refuse the wrong image
+```
+
+Final status:
+
+```text
+EVALUATION COMPLETE
+```
 ```

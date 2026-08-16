@@ -1,39 +1,123 @@
-Next is **`docs/implementation-plan.md`**.
-
-Complete file, **one copy-paste block**:
-
-```markdown
 # Implementation Plan
 
-This document tracks the implementation roadmap for FlyRank AI Capstone 3: Image Relevance and Auto-Tagging.
+## FlyRank AI Capstone 3 — Image Relevance and Auto-Tagging
 
-The project is implemented incrementally. Each phase is considered complete only after the relevant implementation, tests, and verification steps are finished.
+This document describes the implementation plan followed to build the Image Relevance and Auto-Tagging backend.
+
+The implementation was performed incrementally so that each major subsystem could be developed, tested, and verified before the next subsystem was introduced.
+
+The final system provides:
+
+- AI-powered image understanding
+- structured image metadata
+- AI-powered article analysis
+- semantic embeddings
+- cosine-similarity matching
+- deterministic mismatch protection
+- explicit rejection behavior
+- asynchronous image processing
+- human review
+- AI usage tracking
+- reproducible evaluation
+- public production deployment
 
 ---
 
-## Phase 1: Design and First Runnable Slice
+# 1. Implementation Objectives
 
-**Status: Completed**
+The implementation was designed around the following objectives:
 
-### Objectives
+```text
+1. Build a reliable backend foundation
+2. Persist application data in MongoDB
+3. Store images through Cloudinary
+4. Understand images using Gemini Vision
+5. Analyze articles using Gemini
+6. Generate embeddings
+7. Match posts against image candidates
+8. Prevent unsafe semantic matches
+9. Process expensive image operations asynchronously
+10. Provide human review
+11. Track AI usage
+12. Build reproducible evaluation
+13. Verify real external integrations
+14. Deploy the backend publicly
+```
 
-- Inspect workspace.
-- Create project structure.
-- Create design and architecture documentation.
-- Add required project files.
-- Initialize Node.js/Express project.
-- Implement `GET /health`.
-- Add automated test coverage.
-- Run the application.
-- Verify the health endpoint.
+---
 
-### Result
+# 2. Implementation Strategy
 
-- Express backend initialized.
-- Project documentation structure created.
-- Health endpoint implemented.
-- Jest/Supertest health test passed.
-- Live `GET /health` returned:
+The project was built in phases.
+
+```text
+Foundation
+    ↓
+MongoDB
+    ↓
+Cloudinary
+    ↓
+Gemini Vision
+    ↓
+Confidence Handling
+    ↓
+Inngest
+    ↓
+AI Usage Tracking
+    ↓
+Posts
+    ↓
+Embeddings
+    ↓
+Matching
+    ↓
+Mismatch Guard
+    ↓
+Human Review
+    ↓
+Evaluation
+    ↓
+Testing
+    ↓
+Documentation
+    ↓
+Production Deployment
+    ↓
+Production Verification
+```
+
+This incremental approach reduced the risk of introducing multiple unverified subsystems simultaneously.
+
+---
+
+# 3. Phase 1 — Project Foundation
+
+## Objectives
+
+Create the initial backend structure and establish the basic application lifecycle.
+
+## Implementation
+
+The following were created:
+
+```text
+Node.js project
+Express application
+Environment configuration
+Basic route structure
+Error handling foundation
+Jest
+Supertest
+ESLint
+```
+
+The health endpoint was added:
+
+```http
+GET /health
+```
+
+Expected response:
 
 ```json
 {
@@ -41,53 +125,85 @@ The project is implemented incrementally. Each phase is considered complete only
 }
 ```
 
----
+## Verification
 
-## Phase 2: Project Hardening
+The endpoint was verified locally using:
 
-**Status: Completed**
+```powershell
+Invoke-RestMethod -Uri "http://localhost:5000/health"
+```
 
-### Objectives
+The result was:
 
-- Add base validation middleware.
-- Add shared application error classes.
-- Add environment configuration.
-- Establish consistent API error handling.
-- Document the initial architecture.
+```json
+{
+  "status": "ok"
+}
+```
 
-### Result
+## Result
 
-The project now contains:
-
-- centralized environment configuration
-- validation middleware
-- reusable error classes
-- centralized error handling
-- structured project documentation
-
-### Verification
-
-- Validation middleware tests passed.
-- API validation tests passed.
-- ESLint passed.
+```text
+FOUNDATION COMPLETE
+```
 
 ---
 
-## Phase 3: MongoDB Foundation
+# 4. Phase 2 — Configuration and Error Handling
 
-**Status: Completed**
+## Objectives
 
-### Objectives
+Create centralized application configuration and predictable error handling.
 
-- Add Mongoose connection.
-- Add MongoDB models.
-- Add required indexes.
-- Add reproducible migration/index setup.
-- Add database connection behavior.
+## Implementation
 
-### Models
+Environment configuration was centralized.
 
-The following models were implemented:
+Configuration includes:
+
+```text
+MongoDB
+Cloudinary
+Gemini
+Inngest
+Rate limiting
+Vision confidence
+Similarity threshold
+AI usage
+```
+
+Application errors were standardized using reusable error classes.
+
+Validation middleware was also introduced.
+
+## Important Configuration
+
+```env
+VISION_CONFIDENCE_THRESHOLD=0.70
+SIMILARITY_THRESHOLD=0.4
+VISION_MAX_ATTEMPTS=3
+ARTICLE_ANALYSIS_MAX_ATTEMPTS=3
+```
+
+## Result
+
+```text
+CONFIGURATION COMPLETE
+ERROR HANDLING COMPLETE
+VALIDATION FOUNDATION COMPLETE
+```
+
+---
+
+# 5. Phase 3 — MongoDB Foundation
+
+## Objectives
+
+Create the persistence layer.
+
+## Models
+
+The following Mongoose models were implemented:
 
 ```text
 Image
@@ -98,325 +214,408 @@ Job
 AIUsage
 ```
 
-### Result
+## Database Responsibilities
 
-- Mongoose connection helper implemented.
-- All required models implemented.
-- Required indexes implemented.
-- `npm run migrate` implemented.
-- Model/index tests passed.
+MongoDB stores:
 
-### Live Verification
-
-MongoDB connectivity was successfully verified during evaluation dataset generation.
-
-Command:
-
-```bash
-npm run seed:evaluation
+```text
+application records
+AI metadata
+embeddings
+job states
+suggestions
+reviews
+usage records
 ```
 
-The application successfully connected to MongoDB and retrieved persisted Post and Image records.
+## Indexes
 
-### Status
+Required indexes were added.
 
-**Complete**
+Index synchronization is handled through:
+
+```text
+Mongoose syncIndexes()
+```
+
+Migration command:
+
+```bash
+npm run migrate
+```
+
+## Verification
+
+MongoDB connectivity was verified using the real application.
+
+The live database contained persisted:
+
+```text
+posts
+images
+embeddings
+suggestions
+reviews
+jobs
+AI usage records
+```
+
+## Result
+
+```text
+MONGODB LIVE VERIFIED
+```
 
 ---
 
-## Phase 4: Cloudinary Image Storage
+# 6. Phase 4 — Cloudinary Image Storage
 
-**Status: Completed locally; live upload independently unverified**
+## Objectives
 
-### Objectives
+Store uploaded image binaries outside MongoDB.
 
-- Add Cloudinary configuration.
-- Add Cloudinary upload service.
-- Add Cloudinary delete service.
-- Add image upload endpoint.
-- Validate uploaded image MIME types.
-- Persist Cloudinary metadata.
+## Implementation
 
-### Result
-
-Implemented:
+The image upload flow was implemented using:
 
 ```text
-src/config/cloudinary.js
-src/services/cloudinaryService.js
-src/services/imageService.js
-src/controllers/imageController.js
-src/routes/imageRoutes.js
-src/middleware/upload.js
-```
-
-### Endpoint
-
-```http
-POST /api/images
-```
-
-### Behavior
-
-The image ingestion flow is:
-
-```text
-Client
-  ↓
-Express
-  ↓
-Multer validation
-  ↓
+Multer
 Cloudinary
-  ↓
-MongoDB Image record
-  ↓
-Processing job
+MongoDB
 ```
 
-### Verification
+Flow:
 
-Automated image API tests passed.
+```text
+Multipart Request
+       ↓
+Multer
+       ↓
+File Validation
+       ↓
+Cloudinary
+       ↓
+MongoDB Image Record
+```
 
-Invalid live upload validation was also verified.
+MongoDB stores:
 
-Example response:
+```text
+cloudinaryUrl
+cloudinaryPublicId
+originalFilename
+processingStatus
+metadata
+embedding
+```
+
+Raw image binaries are not stored in MongoDB.
+
+## Verification
+
+Cloudinary connectivity was verified.
+
+A real image was uploaded successfully.
+
+Example:
+
+```text
+red-fox.jpg
+```
+
+The resulting image record contained a real Cloudinary URL.
+
+## Result
+
+```text
+CLOUDINARY LIVE VERIFIED
+REAL IMAGE UPLOAD VERIFIED
+```
+
+---
+
+# 7. Phase 5 — Gemini Vision
+
+## Objectives
+
+Use AI to understand uploaded images.
+
+## Implementation
+
+Gemini Vision was integrated to extract:
+
+```text
+subject
+category
+attributes
+caption
+confidence
+```
+
+Example:
 
 ```json
 {
-  "error": {
-    "message": "Image file is required"
-  }
+  "subject": "red fox",
+  "category": "animal",
+  "attributes": [
+    "red fur",
+    "white chest",
+    "bushy tail",
+    "pointed ears"
+  ],
+  "caption": "A red fox stands alert amidst grass and fallen autumn leaves.",
+  "confidence": 0.98
 }
 ```
 
-### Remaining limitation
+## AI Trust Boundary
 
-A dedicated real Cloudinary upload was not independently recorded as final evidence.
-
----
-
-## Phase 5: Gemini Vision
-
-**Status: Completed locally; live Gemini Vision independently unverified**
-
-### Objectives
-
-- Add Gemini configuration.
-- Add image metadata schema.
-- Add structured Gemini Vision requests.
-- Parse JSON responses.
-- Validate output with Zod.
-- Implement retries.
-- Handle low-confidence results safely.
-
-### Result
-
-Implemented:
-
-```text
-src/config/gemini.js
-src/schemas/imageMetadataSchema.js
-src/services/visionService.js
-src/services/imageProcessingService.js
-```
-
-### Trust Boundary
-
-Gemini output is treated as untrusted external data.
+Gemini output is treated as untrusted.
 
 The processing pipeline is:
 
 ```text
-Gemini response
-      ↓
-JSON extraction
-      ↓
-Zod validation
-      ↓
-Confidence validation
-      ↓
-Application state
+Gemini
+   ↓
+JSON Extraction
+   ↓
+Zod Validation
+   ↓
+Confidence Check
+   ↓
+Business Logic
+   ↓
+MongoDB
 ```
 
-### Low-Confidence Behavior
+## Retry Handling
 
-Low-confidence metadata is marked:
+Recoverable AI failures can be retried.
+
+Configured attempts:
+
+```env
+VISION_MAX_ATTEMPTS=3
+```
+
+## Verification
+
+A real Gemini Vision request was executed using a real Cloudinary image.
+
+The request returned:
 
 ```text
-flagged
+HTTP 200
 ```
 
-instead of:
+with valid structured metadata.
+
+## Result
 
 ```text
-completed
+GEMINI VISION LIVE VERIFIED
 ```
-
-### Verification
-
-Tests cover:
-
-- valid responses
-- malformed JSON
-- markdown fences
-- invalid schema output
-- invalid confidence
-- retry behavior
-- retry exhaustion
-- low-confidence handling
-- processing idempotency
-
-### Status
-
-**Complete for deterministic implementation and tests**
 
 ---
 
-## Phase 6: Inngest Jobs and Asynchronous Processing
+# 8. Phase 6 — Low-Confidence Handling
 
-**Status: Completed locally; external execution independently unverified**
+## Objectives
 
-### Objectives
+Prevent uncertain AI classifications from automatically becoming trusted metadata.
 
-- Add Inngest configuration.
-- Add image processing events.
-- Add single-image processing function.
-- Add batch processing function.
-- Add job tracking.
-- Add progress tracking.
-- Add failure handling.
-- Add idempotent job creation.
+## Implementation
 
-### Result
+The confidence threshold was configured as:
 
-Implemented:
-
-```text
-src/config/inngest.js
-src/jobs/processImage.js
-src/jobs/processImageBatch.js
-src/services/jobService.js
-src/controllers/jobController.js
-src/routes/jobRoutes.js
+```env
+VISION_CONFIDENCE_THRESHOLD=0.70
 ```
 
-### Deterministic Job ID
+Behavior:
 
-Single-image processing uses:
+```text
+confidence >= 0.70
+        ↓
+continue processing
+```
+
+while:
+
+```text
+confidence < 0.70
+        ↓
+flag
+```
+
+Flagged images are not treated as normally completed images.
+
+## Result
+
+```text
+LOW-CONFIDENCE SAFETY HANDLING COMPLETE
+```
+
+---
+
+# 9. Phase 7 — Asynchronous Image Processing
+
+## Objectives
+
+Move expensive AI processing away from the synchronous upload lifecycle.
+
+## Technology
+
+```text
+Inngest
+```
+
+## Flow
+
+```text
+POST /api/images
+       ↓
+Cloudinary
+       ↓
+MongoDB Image
+       ↓
+Create Job
+       ↓
+Inngest Event
+       ↓
+Image Processing Worker
+       ↓
+Gemini Vision
+       ↓
+Validation
+       ↓
+Embedding
+       ↓
+MongoDB
+```
+
+## Deterministic Job IDs
+
+Single-image jobs use:
 
 ```text
 process_image:<imageId>
 ```
 
-This prevents duplicate job records for repeated enqueue requests.
-
-### Job States
+Example:
 
 ```text
-pending
-processing
-completed
-completed_with_errors
-failed
+process_image:6a81194bc0dc2fd636dcc2a7
 ```
 
-### Verification
+## Job Tracking
 
-Tests verify:
+Jobs track:
 
-- job creation
-- event enqueueing
-- deterministic IDs
-- progress updates
-- failure handling
-- completion behavior
-- API validation
+```text
+status
+total
+processed
+failed
+flagged
+attempts
+timestamps
+```
 
-### Remaining limitation
+## Verification
 
-External Inngest execution was not independently verified.
+A real uploaded image successfully created and completed a real processing job.
+
+Example final state:
+
+```text
+status: completed
+total: 1
+processed: 1
+failed: 0
+flagged: 0
+attempts: 1
+```
+
+## Result
+
+```text
+INNGEST PROCESSING LIVE VERIFIED
+```
 
 ---
 
-## Phase 7: AI Usage and Cost Tracking
+# 10. Phase 8 — AI Usage Tracking
 
-**Status: Completed**
+## Objectives
 
-### Objectives
+Make AI consumption observable.
 
-- Track Gemini Vision operations.
-- Track embedding operations.
-- Extract token usage.
-- Calculate estimated cost.
-- Persist AI usage records.
-- Provide usage APIs.
+## Implementation
 
-### Result
-
-Implemented:
-
-```text
-src/models/AIUsage.js
-src/services/costTrackingService.js
-src/controllers/usageController.js
-src/routes/usageRoutes.js
-```
-
-### Stored Information
-
-AI usage records can contain:
+AI usage records store:
 
 ```text
 provider
 model
 operation
-imageId
-postId
+reference
 inputTokens
 outputTokens
 totalTokens
 estimatedCost
 ```
 
-### Important Design Decision
+Supported operations include:
 
-Usage persistence must never break the primary AI operation.
+```text
+vision
+embedding
+article analysis
+```
 
-If usage recording fails, the AI request should not be unnecessarily retried only because the audit write failed.
+## APIs
 
-### Verification
+```http
+GET /api/usage
+GET /api/usage/summary
+```
 
-Tests passed for:
+## Important Design Decision
 
-- usage extraction
-- usage record creation
-- cost calculation
-- usage summaries
-- usage API validation
-- Vision usage integration
+Usage tracking must not unnecessarily break the primary AI operation.
 
-### Status
+The main workflow remains independent from usage accounting.
 
-**Complete**
+## Verification
+
+Real AI operations generated persisted AIUsage records.
+
+## Result
+
+```text
+AI USAGE TRACKING LIVE VERIFIED
+```
 
 ---
 
-## Phase 8: Posts and Article Analysis
+# 11. Phase 9 — Article Analysis
 
-**Status: Completed locally; live Gemini article analysis independently unverified**
+## Objectives
 
-### Objectives
+Understand blog posts using AI.
 
-- Add Post CRUD.
-- Analyze article title/content.
-- Extract structured article metadata.
-- Validate AI-generated metadata.
-- Generate post embeddings.
+## Implementation
 
-### Article Metadata
+Post content is analyzed using:
 
-The system extracts:
+```text
+title
+content
+```
+
+Gemini extracts:
 
 ```text
 subject
@@ -424,63 +623,56 @@ category
 keywords
 ```
 
-### Result
+The output is validated before persistence.
 
-Implemented:
+## Post Processing Flow
 
 ```text
-src/models/Post.js
-src/services/postService.js
-src/services/articleAnalysisService.js
-src/schemas/articleMetadataSchema.js
-src/controllers/postController.js
-src/routes/postRoutes.js
+Post Request
+      ↓
+Gemini Article Analysis
+      ↓
+JSON Extraction
+      ↓
+Zod Validation
+      ↓
+Article Metadata
+      ↓
+Embedding Generation
+      ↓
+MongoDB
 ```
 
-### Post Endpoints
+## CRUD
+
+The following endpoints were implemented:
 
 ```http
-POST /api/posts
-GET /api/posts
-GET /api/posts/:id
-PATCH /api/posts/:id
+POST   /api/posts
+GET    /api/posts
+GET    /api/posts/:id
+PATCH  /api/posts/:id
 DELETE /api/posts/:id
 ```
 
-### Verification
+## Result
 
-Tests passed for:
-
-- article schema
-- article analysis
-- malformed AI output
-- retry behavior
-- safe failure
-- Post CRUD
-- API validation
-
-### Remaining limitation
-
-A dedicated live Gemini article-analysis request was not independently recorded.
+```text
+POST CRUD COMPLETE
+ARTICLE ANALYSIS COMPLETE
+```
 
 ---
 
-## Phase 9: Embeddings and Similarity
+# 12. Phase 10 — Embedding Generation
 
-**Status: Completed locally; live Gemini generation independently unverified**
+## Objectives
 
-### Objectives
+Represent images and posts as semantic vectors.
 
-- Generate image embeddings.
-- Generate post embeddings.
-- Store embeddings in MongoDB.
-- Implement cosine similarity.
-- Add vector validation.
-- Add embedding usage tracking.
+## Image Embeddings
 
-### Image Embedding Input
-
-Images are embedded from:
+Image embeddings are generated from:
 
 ```text
 caption
@@ -489,9 +681,9 @@ category
 attributes
 ```
 
-### Post Embedding Input
+## Post Embeddings
 
-Posts are embedded from:
+Post embeddings are generated from:
 
 ```text
 title
@@ -501,291 +693,425 @@ category
 keywords
 ```
 
-### Result
+## Storage
 
-Implemented:
+Embeddings are stored as numeric arrays in MongoDB.
+
+No separate vector database is used.
+
+## Reason
+
+The capstone dataset is sufficiently small for direct cosine similarity.
+
+This reduces:
 
 ```text
-src/services/embeddingService.js
-src/utils/cosineSimilarity.js
+infrastructure
+deployment complexity
+operational overhead
 ```
 
-Embeddings are stored directly in MongoDB as numeric arrays.
+## Verification
 
-### Vector Database Decision
+Real embeddings were generated and persisted.
 
-A separate vector database was intentionally not used.
+Example:
 
-The expected capstone scale is small enough for backend cosine similarity over MongoDB-stored vectors.
+```text
+embeddingModel: gemini-embedding-2
+```
 
-### Verification
+## Result
 
-Tests passed for:
-
-- embedding request construction
-- response parsing
-- embedding persistence
-- usage tracking
-- vector validation
-- dimension validation
-- zero-vector handling
-- cosine similarity
-
-### Live Evaluation
-
-Persisted image embeddings were successfully used by the live matching evaluation.
-
-### Status
-
-**Complete**
+```text
+EMBEDDING GENERATION LIVE VERIFIED
+EMBEDDING PERSISTENCE LIVE VERIFIED
+```
 
 ---
 
-## Phase 10: Matching Engine and Mismatch Guard
+# 13. Phase 11 — Cosine Similarity
 
-**Status: Completed and live-verified**
+## Objectives
 
-### Objectives
+Calculate semantic similarity between:
 
-- Load post embeddings.
-- Load completed image candidates.
-- Calculate cosine similarity.
-- Rank candidates.
-- Apply mismatch guard.
-- Persist suggestions.
-- Return safe recommendations.
-- Return `no_confident_match` when appropriate.
+```text
+Post Embedding
+```
 
-### Matching Flow
+and:
+
+```text
+Image Embedding
+```
+
+## Formula
+
+```text
+cosine(A,B) =
+A · B
+────────────
+||A|| ||B||
+```
+
+## Validation
+
+The utility protects against:
+
+```text
+invalid vectors
+different dimensions
+zero vectors
+```
+
+## Result
+
+```text
+COSINE SIMILARITY COMPLETE
+```
+
+---
+
+# 14. Phase 12 — Matching Engine
+
+## Objectives
+
+Rank candidate images for a post.
+
+## Flow
 
 ```text
 Post
  ↓
-Post embedding
+Post Embedding
  ↓
-Completed image candidates
+Completed Image Candidates
  ↓
-Cosine similarity
+Cosine Similarity
  ↓
-Candidate ranking
+Rank Candidates
  ↓
-Mismatch guard
+Mismatch Guard
  ↓
-Accept / Reject
+Accepted / Rejected
  ↓
-Suggestion persistence
- ↓
-API response
+Suggestions
 ```
 
-### Guard Checks
+## Candidate Selection
 
-The mismatch guard checks:
+The matching engine evaluates usable image candidates and calculates similarity against the post embedding.
+
+Candidates are ranked by semantic similarity.
+
+## Important Design Decision
+
+The highest similarity candidate is not automatically accepted.
+
+Instead:
 
 ```text
-similarity threshold
-vision confidence
-subject compatibility
-category compatibility
+Similarity
+    ↓
+Mismatch Guard
+    ↓
+Final Decision
 ```
 
-### Important Safety Decision
-
-The highest similarity image is not automatically accepted.
-
-A candidate must pass the guard.
-
-### Result
-
-Implemented:
+## Result
 
 ```text
-src/services/matchingService.js
-src/services/mismatchGuardService.js
-src/controllers/matchingController.js
-src/routes/matchingRoutes.js
+MATCHING ENGINE LIVE VERIFIED
 ```
-
-### Endpoint
-
-```http
-GET /api/posts/:id/images
-```
-
-### Tested Scenarios
-
-- red fox → red fox accepted
-- red fox → gray wolf rejected
-- low similarity rejected
-- low confidence rejected
-- category mismatch rejected
-- forced incorrect candidate rejected
-- no candidate available
-- no candidate passing the guard
-
-### Live Evaluation
-
-The live evaluation successfully verified:
-
-```text
-red fox article → red fox image
-gray wolf article → gray wolf image
-remote work article → no_confident_match
-```
-
-### Result
-
-```text
-3/3 correct
-100.00% Top-1 precision
-```
-
-### Status
-
-**Complete**
 
 ---
 
-## Phase 11: Human Review API
+# 15. Phase 13 — Mismatch Guard
 
-**Status: Completed and live-verified**
+## Objectives
 
-### Objectives
+Prevent semantically close but incorrect images from being recommended.
 
-- Inspect suggestions.
-- Approve suggestions.
-- Reject suggestions.
-- Store review records.
-- Retrieve review history.
-- Handle invalid suggestion IDs safely.
+## Guard Checks
 
-### Endpoints
+The guard checks:
+
+```text
+similarity
+confidence
+subject
+category
+```
+
+## Threshold
+
+```env
+SIMILARITY_THRESHOLD=0.4
+```
+
+## Example
+
+```text
+Expected subject:
+red fox
+
+Detected subject:
+gray wolf
+
+Similarity:
+0.3358
+
+Threshold:
+0.4
+```
+
+Result:
+
+```text
+REJECTED
+```
+
+Reasons:
+
+```text
+Similarity below threshold
+Subject mismatch
+```
+
+## Result
+
+```text
+MISMATCH GUARD LIVE VERIFIED
+```
+
+---
+
+# 16. Phase 14 — No-Confident-Match Behavior
+
+## Objectives
+
+Ensure the system can safely reject all candidates.
+
+If no candidate passes the guard:
+
+```text
+status = no_confident_match
+```
+
+Example:
+
+```json
+{
+  "status": "no_confident_match",
+  "suggestions": []
+}
+```
+
+## Evaluation Scenario
+
+The remote-work article produced:
+
+```text
+status:
+no_confident_match
+```
+
+The highest candidate similarity was approximately:
+
+```text
+0.2913
+```
+
+The candidate was rejected because it failed the matching requirements.
+
+## Result
+
+```text
+NO-CONFIDENT-MATCH LIVE VERIFIED
+```
+
+---
+
+# 17. Phase 15 — Suggestion Persistence
+
+## Objectives
+
+Persist both accepted and rejected candidate decisions.
+
+## Suggestion Data
+
+Suggestions contain:
+
+```text
+postId
+imageId
+similarityScore
+guardStatus
+decision
+reason
+guardReasons
+```
+
+This provides an explanation of why a candidate was accepted or rejected.
+
+## Example Accepted Suggestion
+
+```text
+guardStatus:
+accepted
+
+decision:
+recommended
+```
+
+## Example Rejected Suggestion
+
+```text
+guardStatus:
+rejected
+
+decision:
+rejected
+```
+
+## Result
+
+```text
+SUGGESTION PERSISTENCE LIVE VERIFIED
+```
+
+---
+
+# 18. Phase 16 — Human Review
+
+## Objectives
+
+Provide a human-in-the-loop workflow.
+
+## Endpoints
 
 ```http
-GET /api/suggestions/:id
-GET /api/suggestions/:id/reviews
+GET  /api/suggestions/:id
+GET  /api/suggestions/:id/reviews
+
 POST /api/suggestions/:id/reviews
 POST /api/suggestions/:id/approve
 POST /api/suggestions/:id/reject
 ```
 
-### Review Decisions
+## Decision States
 
-Human approval produces:
+Automatic recommendation:
+
+```text
+recommended
+```
+
+Human approval:
 
 ```text
 approved
 ```
 
-Human rejection produces:
+Human rejection:
 
 ```text
 manually_rejected
 ```
 
-### Review History
+## Review History
 
-Review records are append-only.
+Review records are retained.
 
-The Suggestion stores the latest decision while Review records preserve historical decisions.
+The latest review affects the current Suggestion state while historical review records remain available.
 
-### Important Bug Found
+## Validation
 
-An invalid MongoDB ObjectId initially caused:
+Suggestion identifiers are validated before database operations.
 
-```text
-500 Internal server error
-```
+Invalid IDs are converted into controlled application errors rather than MongoDB CastErrors.
 
-### Correction
-
-The review service was updated to validate the suggestion ID before calling MongoDB.
-
-Invalid IDs now produce:
+## Result
 
 ```text
-404 Suggestion not found
+HUMAN REVIEW LIVE VERIFIED
 ```
-
-### Verification
-
-The review service test suite passed:
-
-```text
-5 tests passed
-```
-
-The complete test suite later passed:
-
-```text
-23 suites
-90 tests
-```
-
-### Live Verification
-
-Successfully verified:
-
-- suggestion retrieval
-- approval persistence
-- rejection persistence
-- review history
-- invalid suggestion ID handling
-
-### Status
-
-**Complete**
 
 ---
 
-## Phase 12: Evaluation
+# 19. Phase 17 — Evaluation Dataset
 
-**Status: Completed**
+## Objectives
 
-### Objectives
+Create a reproducible labeled evaluation dataset.
 
-- Create evaluation dataset.
-- Generate dataset from persisted database records.
-- Execute real matching logic.
-- Measure Top-1 precision.
-- Verify no-confident-match behavior.
+## Dataset
 
-### Files
+The evaluation contains three cases:
 
 ```text
-dataset/evaluation.json
-dataset/README.md
-dataset/images/red-fox.jpg
-dataset/images/gray-wolf.jpg
-dataset/images/dog.jpg
-dataset/images/unrelated.jpg
+1. Red fox article → red fox image
+2. Gray wolf article → gray wolf image
+3. Remote work article → no confident match
 ```
 
-### Dataset Generation
+## Evaluation Images
 
-Command:
+The dataset includes:
+
+```text
+red-fox.jpg
+gray-wolf.jpg
+dog.jpg
+unrelated.jpg
+```
+
+Additional persisted candidates may also be available in the evaluation database.
+
+## Generation
+
+The evaluation dataset can be generated using:
 
 ```bash
 npm run seed:evaluation
 ```
 
-### Generated Cases
+---
+
+# 20. Phase 18 — Evaluation Engine
+
+## Objectives
+
+Measure real matching behavior.
+
+The evaluation uses:
 
 ```text
-1. red fox article should match red fox image
-2. gray wolf article should match gray wolf image
-3. remote work article should have no confident animal image match
+real MongoDB records
+real persisted embeddings
+real matching service
+real mismatch guard
+real suggestion persistence
 ```
 
-### Evaluation
+It does not rely exclusively on mocked services.
 
-Command:
+## Command
 
 ```bash
 npm run evaluate
 ```
 
-### Result
+## Metric
+
+The primary metric is:
+
+```text
+Top-1 Precision
+```
+
+## Final Result
 
 ```text
 Posts evaluated: 3
@@ -793,189 +1119,258 @@ Correct top-1 matches: 3
 Top-1 precision: 100.00%
 ```
 
-### Individual Results
+---
 
-#### Case 1
+# 21. Evaluation Case 1
+
+## Input
 
 ```text
-Expected:
-red fox image
+Post:
+The Behavior of Red Foxes
+```
 
-Actual:
-red fox image
+## Expected
 
-Similarity:
+```text
+red fox image
+```
+
+## Actual
+
+```text
+red fox image
+```
+
+## Similarity
+
+```text
 0.4213
-
-Result:
-CORRECT
 ```
 
-#### Case 2
+## Result
 
 ```text
-Expected:
-gray wolf image
-
-Actual:
-gray wolf image
-
-Similarity:
-0.4264
-
-Result:
 CORRECT
 ```
-
-#### Case 3
-
-```text
-Expected:
-none
-
-Actual:
-none
-
-Status:
-no_confident_match
-
-Result:
-CORRECT
-```
-
-### Status
-
-**Complete**
 
 ---
 
-## Phase 13: Documentation and Evidence
+# 22. Evaluation Case 2
 
-**Status: Completed**
-
-### Objectives
-
-- Complete README.
-- Update build log.
-- Update evidence document.
-- Update implementation plan.
-- Update architecture documentation.
-- Update design documentation.
-- Update dataset documentation.
-- Update capstone command configuration.
-- Ensure live and local verification are clearly distinguished.
-
-### Documentation Files
+## Input
 
 ```text
-README.md
-BUILDLOG.md
-EVIDENCE.md
-docs/design.md
-docs/architecture.md
-docs/implementation-plan.md
-dataset/README.md
-capstone.yaml
+Post:
+Understanding Gray Wolves
 ```
 
-### Final Automated Verification
+## Expected
 
-Command:
-
-```bash
-npm test
+```text
+gray wolf image
 ```
 
-Result:
+## Actual
+
+```text
+gray wolf image
+```
+
+## Similarity
+
+```text
+0.4264
+```
+
+## Result
+
+```text
+CORRECT
+```
+
+---
+
+# 23. Evaluation Case 3
+
+## Input
+
+```text
+Post:
+Best Practices for Remote Work
+```
+
+## Expected
+
+```text
+no confident match
+```
+
+## Actual
+
+```text
+no_confident_match
+```
+
+## Highest Candidate Similarity
+
+```text
+0.2913
+```
+
+## Result
+
+```text
+CORRECT
+```
+
+This case demonstrates that the system can refuse to recommend an irrelevant image.
+
+---
+
+# 24. Phase 19 — Automated Testing
+
+## Objectives
+
+Verify individual components and API behavior.
+
+## Test Categories
+
+```text
+API
+Services
+Models
+Schemas
+Matching
+Guard
+Middleware
+Utilities
+```
+
+## Final Automated Test Result
 
 ```text
 Test Suites: 23 passed, 23 total
 Tests:       90 passed, 90 total
+Snapshots:   0 total
 ```
 
-### Lint
+## Result
 
-Command:
+```text
+AUTOMATED TESTING COMPLETE
+```
+
+---
+
+# 25. Phase 20 — Linting
+
+## Command
 
 ```bash
 npm run lint
 ```
 
-Result:
+## Result
 
 ```text
 PASS
 ```
 
-### Status
+No ESLint errors were reported.
 
-**Complete**
+## Result
+
+```text
+LINT COMPLETE
+```
 
 ---
 
-## Phase 14: Deployment
+# 26. Phase 21 — Live External-Service Verification
 
-**Status: Pending**
+Automated mocks were supplemented with real integration tests.
 
-### Objectives
+The following were verified:
 
-- Prepare deployment configuration.
-- Configure production environment variables.
-- Deploy backend to a Node.js-compatible hosting platform.
-- Configure MongoDB Atlas.
-- Configure Cloudinary.
-- Configure Gemini.
-- Configure Inngest.
-- Verify deployed health endpoint.
-- Document deployment steps.
+```text
+MongoDB
+Cloudinary
+Gemini API
+Gemini Vision
+Gemini Embeddings
+Real image processing
+AI usage tracking
+Live matching
+Human review
+```
 
-### Potential Hosting Options
+This distinction is important because:
 
-The project can be deployed to a Node.js-compatible platform such as:
+```text
+mocked test
+```
+
+does not prove:
+
+```text
+real external integration
+```
+
+works.
+
+---
+
+# 27. Phase 22 — Production Deployment
+
+## Objectives
+
+Make the backend publicly accessible.
+
+## Deployment Platform
 
 ```text
 Render
-Railway
-Fly.io
 ```
 
-The final platform should be selected based on the available free-tier requirements and ease of configuration.
+## Production URL
 
-### Required Production Environment Variables
-
-```env
-MONGODB_URI=
-CLOUDINARY_CLOUD_NAME=
-CLOUDINARY_API_KEY=
-CLOUDINARY_API_SECRET=
-
-GEMINI_API_KEY=
-GEMINI_VISION_MODEL=
-GEMINI_TEXT_MODEL=
-GEMINI_EMBEDDING_MODEL=
-GEMINI_API_BASE_URL=
-
-VISION_MAX_ATTEMPTS=
-ARTICLE_ANALYSIS_MAX_ATTEMPTS=
-VISION_CONFIDENCE_THRESHOLD=
-
-GEMINI_VISION_INPUT_COST_PER_1K=
-GEMINI_VISION_OUTPUT_COST_PER_1K=
-GEMINI_EMBEDDING_COST_PER_1K=
-
-INNGEST_EVENT_KEY=
-INNGEST_SIGNING_KEY=
+```text
+https://flyrank-capstone-imagerelevance.onrender.com
 ```
 
-### Deployment Verification
+## Production Application
 
-Deployment will only be considered successful after a real request to:
+The deployed application runs the same Express backend architecture used locally.
+
+Production dependencies include:
+
+```text
+MongoDB
+Cloudinary
+Gemini
+Inngest
+```
+
+## Result
+
+```text
+PRODUCTION DEPLOYMENT LIVE
+```
+
+---
+
+# 28. Phase 23 — Production Health Verification
+
+The deployed application was verified through its public health endpoint.
+
+Endpoint:
 
 ```http
 GET /health
 ```
 
-returns:
+Expected:
 
 ```json
 {
@@ -983,75 +1378,482 @@ returns:
 }
 ```
 
-### Current Status
+The public deployment responded successfully.
 
-**PENDING**
-
----
-
-# Final Project State
-
-The implementation phases through documentation are complete.
+## Result
 
 ```text
-Phase 1   Design and initialization       COMPLETE
-Phase 2   Project hardening               COMPLETE
-Phase 3   MongoDB                         COMPLETE
-Phase 4   Cloudinary                      COMPLETE LOCALLY
-Phase 5   Gemini Vision                   COMPLETE LOCALLY
-Phase 6   Inngest                         COMPLETE LOCALLY
-Phase 7   AI usage tracking               COMPLETE
-Phase 8   Posts and article analysis      COMPLETE LOCALLY
-Phase 9   Embeddings and similarity       COMPLETE
-Phase 10  Matching and mismatch guard     COMPLETE + LIVE VERIFIED
-Phase 11  Review API                      COMPLETE + LIVE VERIFIED
-Phase 12  Evaluation                      COMPLETE + LIVE VERIFIED
-Phase 13  Documentation                   COMPLETE
-Phase 14  Deployment                      PENDING
+PRODUCTION HEALTH LIVE VERIFIED
 ```
 
 ---
 
-# Final Verification Metrics
+# 29. Phase 24 — Production API Verification
+
+The deployed API was tested against real persisted data.
+
+Verified areas include:
 
 ```text
-Automated test suites: 23
-Automated tests:       90
-Tests passed:          90
-Tests failed:          0
+posts
+images
+jobs
+usage
+matching
+suggestions
+reviews
+```
 
-ESLint:                PASS
+Production endpoints successfully returned application data.
 
-Evaluation cases:     3
-Correct cases:        3
-Incorrect cases:      0
+## Result
 
-Top-1 precision:      100.00%
-
-MongoDB connectivity: LIVE VERIFIED
-
-Review approval:      LIVE VERIFIED
-Review rejection:     LIVE VERIFIED
-Review history:       LIVE VERIFIED
-
-Deployment:           PENDING
+```text
+PRODUCTION API LIVE VERIFIED
 ```
 
 ---
 
-# Engineering Principles Established
+# 30. Phase 25 — Production Matching Verification
 
-The implementation follows these principles:
+The production matching endpoint was tested using persisted posts and images.
 
-## 1. AI output is untrusted
+Endpoint:
 
-Gemini responses must pass strict parsing and schema validation before being persisted.
+```http
+GET /api/posts/:id/images
+```
 
-## 2. Similarity is not enough
+## Red Fox Result
 
-Semantic similarity is used for ranking, but safety rules determine whether a candidate can actually be recommended.
+```text
+status:
+matched
+```
 
-## 3. Safe rejection is better than guessing
+Accepted candidates included:
+
+```text
+red fox
+```
+
+with similarity scores around:
+
+```text
+0.4213
+0.4166
+0.4049
+```
+
+## Gray Wolf Result
+
+```text
+status:
+matched
+```
+
+The gray wolf candidate was accepted with approximately:
+
+```text
+0.4264
+```
+
+## Result
+
+```text
+PRODUCTION MATCHING LIVE VERIFIED
+```
+
+---
+
+# 31. Phase 26 — Production Mismatch Verification
+
+The production system was tested against incorrect candidates.
+
+For the red fox article:
+
+```text
+Candidate:
+gray wolf
+```
+
+The system produced:
+
+```text
+guardStatus:
+rejected
+```
+
+with reasons including:
+
+```text
+Similarity 0.336 is below threshold 0.4
+Subject mismatch: expected red fox, detected gray wolf
+```
+
+This demonstrates that the deployed system does not blindly select the highest semantic candidate.
+
+## Result
+
+```text
+PRODUCTION MISMATCH GUARD LIVE VERIFIED
+```
+
+---
+
+# 32. Phase 27 — Production No-Confident-Match Verification
+
+The remote-work article was tested in production.
+
+The system returned:
+
+```text
+status:
+no_confident_match
+```
+
+with:
+
+```text
+suggestions:
+[]
+```
+
+The candidate images were rejected because they were either:
+
+```text
+below similarity threshold
+```
+
+or:
+
+```text
+subject/category mismatches
+```
+
+## Result
+
+```text
+PRODUCTION NO-CONFIDENT-MATCH LIVE VERIFIED
+```
+
+---
+
+# 33. Phase 28 — Production Human Review Verification
+
+The production review workflow was tested.
+
+Verified actions include:
+
+```text
+suggestion inspection
+review history
+approval
+rejection
+```
+
+Approval produces:
+
+```text
+approved
+```
+
+Rejection produces:
+
+```text
+manually_rejected
+```
+
+Review history remains available.
+
+## Result
+
+```text
+PRODUCTION HUMAN REVIEW LIVE VERIFIED
+```
+
+---
+
+# 34. Phase 29 — Production Evaluation
+
+The evaluation was run against the real persisted application data.
+
+Command:
+
+```bash
+npm run evaluate
+```
+
+Final result:
+
+```text
+Posts evaluated: 3
+Correct top-1 matches: 3
+Top-1 precision: 100.00%
+```
+
+## Result
+
+```text
+PRODUCTION EVALUATION LIVE VERIFIED
+```
+
+---
+
+# 35. Final Verification Matrix
+
+| Component | Status |
+|---|---|
+| Express API | Verified |
+| Health endpoint | Live Verified |
+| Request validation | Verified |
+| MongoDB models | Verified |
+| MongoDB indexes | Verified |
+| MongoDB connectivity | Live Verified |
+| Cloudinary configuration | Verified |
+| Cloudinary connectivity | Live Verified |
+| Cloudinary upload | Live Verified |
+| Gemini API | Live Verified |
+| Gemini Vision | Live Verified |
+| Gemini article analysis | Verified |
+| Gemini embeddings | Live Verified |
+| Zod validation | Verified |
+| Low-confidence handling | Verified |
+| Inngest architecture | Verified |
+| Inngest processing | Live Verified |
+| AI usage tracking | Live Verified |
+| Post CRUD | Verified |
+| Image CRUD | Verified |
+| Matching engine | Live Verified |
+| Mismatch guard | Live Verified |
+| Suggestion persistence | Live Verified |
+| Human approval | Live Verified |
+| Human rejection | Live Verified |
+| Review history | Live Verified |
+| Evaluation dataset | Verified |
+| Live evaluation | Live Verified |
+| Automated tests | 23/23 suites passed |
+| Automated test cases | 90/90 passed |
+| ESLint | Passed |
+| Render deployment | Live Verified |
+| Production health | Live Verified |
+| Production API | Live Verified |
+| Production matching | Live Verified |
+| Production rejection | Live Verified |
+| Production review | Live Verified |
+| Production evaluation | Live Verified |
+
+---
+
+# 36. Final Project Metrics
+
+```text
+Automated Test Suites:
+23 / 23 PASS
+
+Automated Tests:
+90 / 90 PASS
+
+Lint:
+PASS
+
+Evaluation Cases:
+3
+
+Correct Evaluation Cases:
+3
+
+Top-1 Precision:
+100.00%
+
+Cloudinary:
+LIVE VERIFIED
+
+MongoDB:
+LIVE VERIFIED
+
+Gemini Vision:
+LIVE VERIFIED
+
+Gemini Embeddings:
+LIVE VERIFIED
+
+Inngest:
+LIVE VERIFIED
+
+Image Processing:
+LIVE VERIFIED
+
+AI Usage Tracking:
+LIVE VERIFIED
+
+Matching:
+LIVE VERIFIED
+
+Mismatch Guard:
+LIVE VERIFIED
+
+Human Review:
+LIVE VERIFIED
+
+Production Deployment:
+LIVE VERIFIED
+```
+
+---
+
+# 37. Final System Workflow
+
+The complete implementation now follows:
+
+```text
+                    IMAGE UPLOAD
+                         │
+                         ▼
+                  Express API
+                         │
+                         ▼
+                    Cloudinary
+                         │
+                         ▼
+                   Image Record
+                         │
+                         ▼
+                    Inngest Job
+                         │
+                         ▼
+                  Gemini Vision
+                         │
+                         ▼
+                   Zod Validation
+                         │
+                         ▼
+                 Confidence Check
+                         │
+                         ▼
+                  Image Metadata
+                         │
+                         ▼
+                Gemini Embeddings
+                         │
+                         ▼
+                  MongoDB Vector
+                         │
+                         │
+                         │
+                    BLOG POST
+                         │
+                         ▼
+                  Gemini Analysis
+                         │
+                         ▼
+                   Zod Validation
+                         │
+                         ▼
+                  Post Metadata
+                         │
+                         ▼
+                Gemini Embeddings
+                         │
+                         ▼
+                  MongoDB Vector
+                         │
+                         │
+             ┌───────────┴───────────┐
+             │                       │
+             ▼                       ▼
+       Post Embedding          Image Embeddings
+             │                       │
+             └───────────┬───────────┘
+                         ▼
+                 Cosine Similarity
+                         │
+                         ▼
+                 Candidate Ranking
+                         │
+                         ▼
+                  Mismatch Guard
+                         │
+                 ┌───────┴───────┐
+                 │               │
+                 ▼               ▼
+              ACCEPT           REJECT
+                 │               │
+                 ▼               ▼
+            Suggestion       Rejection Reason
+                 │
+                 ▼
+             Human Review
+                 │
+           ┌─────┴─────┐
+           ▼           ▼
+        Approve      Reject
+           │           │
+           ▼           ▼
+       approved   manually_rejected
+```
+
+---
+
+# 38. Engineering Decisions
+
+## Backend Only
+
+No frontend was required because the primary capstone objective is backend AI processing and recommendation logic.
+
+---
+
+## MongoDB Instead of a Dedicated Vector Database
+
+The dataset is small enough for direct cosine similarity.
+
+This avoids unnecessary infrastructure.
+
+---
+
+## Cloudinary Instead of MongoDB Binary Storage
+
+Cloudinary handles image files while MongoDB stores metadata and references.
+
+---
+
+## Inngest for Asynchronous Processing
+
+Image understanding and embedding generation are asynchronous because they involve external AI operations.
+
+---
+
+## Gemini for AI Understanding
+
+Gemini provides:
+
+```text
+Vision
+Article Analysis
+Embeddings
+```
+
+---
+
+## Zod for Trust Boundaries
+
+All structured AI output must pass schema validation before application state is updated.
+
+---
+
+## Deterministic Mismatch Guard
+
+The final safety decision uses deterministic rules.
+
+---
+
+## Human Review
+
+Automated recommendations remain reviewable by humans.
+
+---
+
+## Explicit No-Match State
 
 The system can return:
 
@@ -1059,25 +1861,210 @@ The system can return:
 no_confident_match
 ```
 
-when no image satisfies the guard.
+instead of forcing an incorrect recommendation.
 
-## 4. Human review is auditable
+---
 
-Human decisions are stored as Review records while the Suggestion stores the current decision.
+# 39. Lessons Incorporated Into the Implementation
 
-## 5. External integrations are isolated
+## Lesson 1 — AI Output Must Be Validated
 
-Cloudinary, Gemini, MongoDB, and Inngest are kept behind dedicated configuration and service layers.
+Implemented:
 
-## 6. Verification must match the claim
+```text
+Gemini
+ ↓
+Parse
+ ↓
+Zod
+ ↓
+Confidence
+ ↓
+Business Logic
+```
 
-Mocked tests are used to verify deterministic logic.
+---
 
-Live requests are used when proving actual external-service behavior.
+## Lesson 2 — Similarity Alone Is Not Enough
 
-Documentation explicitly distinguishes the two.
+Implemented:
 
-## 7. Build incrementally
+```text
+Cosine Similarity
+       ↓
+Mismatch Guard
+```
 
-Each phase was implemented, tested, and verified before moving to the next major subsystem.
+---
+
+## Lesson 3 — Rejection Is a Valid Outcome
+
+Implemented:
+
+```text
+no_confident_match
+```
+
+---
+
+## Lesson 4 — External Services Require Live Verification
+
+Implemented separate verification for:
+
+```text
+MongoDB
+Cloudinary
+Gemini
+Inngest
+Production API
+```
+
+---
+
+## Lesson 5 — Keep Human Decisions Auditable
+
+Implemented:
+
+```text
+Suggestion
+Review
+Review History
+```
+
+---
+
+## Lesson 6 — Evaluation Must Include Negative Cases
+
+Implemented:
+
+```text
+red fox → red fox
+gray wolf → gray wolf
+remote work → no confident match
+```
+
+---
+
+# 40. Final Implementation State
+
+The planned architecture has been implemented through the following sequence:
+
+```text
+Phase 1   Foundation
+Phase 2   Configuration
+Phase 3   MongoDB
+Phase 4   Cloudinary
+Phase 5   Gemini Vision
+Phase 6   Confidence Handling
+Phase 7   Inngest
+Phase 8   AI Usage
+Phase 9   Article Analysis
+Phase 10  Embeddings
+Phase 11  Cosine Similarity
+Phase 12  Matching
+Phase 13  Mismatch Guard
+Phase 14  No-Confident-Match
+Phase 15  Suggestions
+Phase 16  Human Review
+Phase 17  Evaluation Dataset
+Phase 18  Evaluation Engine
+Phase 19  Automated Testing
+Phase 20  Linting
+Phase 21  Live Integration Verification
+Phase 22  Production Deployment
+Phase 23  Production Health Verification
+Phase 24  Production API Verification
+Phase 25  Production Matching Verification
+Phase 26  Production Mismatch Verification
+Phase 27  Production No-Match Verification
+Phase 28  Production Review Verification
+Phase 29  Production Evaluation
+```
+
+---
+
+# 41. Final Status
+
+```text
+CORE IMPLEMENTATION:
+COMPLETE
+
+AUTOMATED TESTING:
+23/23 SUITES PASS
+90/90 TESTS PASS
+
+LINT:
+PASS
+
+EVALUATION:
+3/3 CASES CORRECT
+
+TOP-1 PRECISION:
+100.00%
+
+EXTERNAL SERVICES:
+LIVE VERIFIED
+
+PRODUCTION DEPLOYMENT:
+LIVE VERIFIED
+
+PRODUCTION HEALTH:
+LIVE VERIFIED
+
+PRODUCTION MATCHING:
+LIVE VERIFIED
+
+PRODUCTION MISMATCH GUARD:
+LIVE VERIFIED
+
+PRODUCTION NO-CONFIDENT-MATCH:
+LIVE VERIFIED
+
+PRODUCTION HUMAN REVIEW:
+LIVE VERIFIED
+
+PRODUCTION EVALUATION:
+LIVE VERIFIED
+```
+
+---
+
+# 42. Completion Criteria
+
+The capstone implementation is considered complete because the following criteria have been satisfied:
+
+```text
+[✓] Backend API implemented
+[✓] MongoDB persistence implemented
+[✓] Cloudinary image storage implemented
+[✓] Gemini Vision implemented
+[✓] Article analysis implemented
+[✓] Embeddings implemented
+[✓] Cosine similarity implemented
+[✓] Matching engine implemented
+[✓] Deterministic mismatch guard implemented
+[✓] No-confident-match behavior implemented
+[✓] Asynchronous processing implemented
+[✓] AI usage tracking implemented
+[✓] Human review implemented
+[✓] Review history implemented
+[✓] Evaluation dataset implemented
+[✓] Evaluation script implemented
+[✓] Automated tests passing
+[✓] Lint passing
+[✓] Real external services verified
+[✓] Production deployment completed
+[✓] Production health verified
+[✓] Production API verified
+[✓] Production matching verified
+[✓] Production rejection verified
+[✓] Production human review verified
+[✓] Production evaluation verified
+```
+
+Final state:
+
+```text
+CAPSTONE 3 IMPLEMENTATION COMPLETE
+PRODUCTION DEPLOYMENT LIVE VERIFIED
 ```
