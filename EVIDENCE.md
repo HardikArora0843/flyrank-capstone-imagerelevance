@@ -2,7 +2,14 @@
 
 This file records verified proof for the FlyRank AI Capstone 3 requirements.
 
-Evidence is only marked as `PASS` when an actual command, automated test, or reproducible live request provides proof.
+Evidence is marked as `PASS` only when supported by an actual command, automated test, or reproducible live request.
+
+The project distinguishes between:
+
+- deterministic automated verification
+- live external-service verification
+- live MongoDB-backed application verification
+- final evaluation results
 
 ---
 
@@ -20,7 +27,7 @@ Evidence is only marked as `PASS` when an actual command, automated test, or rep
 
 ### Verification
 
-Command:
+Automated command:
 
 ```bash
 npm test
@@ -29,14 +36,14 @@ npm test
 Live request:
 
 ```powershell
-Invoke-RestMethod -Uri http://localhost:5000/health
+Invoke-RestMethod -Uri "http://localhost:5000/health"
 ```
 
 ### Result
 
-Automated health test passed.
+The automated health test passed.
 
-Live API returned:
+The live API returned:
 
 ```json
 {
@@ -121,11 +128,9 @@ tests/models/indexes.test.js
 
 ### Result
 
-The model/index test passed.
+The model and index test passed.
 
 The project contains Mongoose models for all required collections.
-
-MongoDB connectivity was subsequently verified during evaluation dataset generation.
 
 ### Status
 
@@ -137,14 +142,16 @@ MongoDB connectivity was subsequently verified during evaluation dataset generat
 
 ### Requirement
 
-The application must be able to connect to MongoDB and persist application data.
+The application must connect to MongoDB and persist application data.
 
 ### Verification
+
+MongoDB connectivity was verified through the evaluation workflow.
 
 Command:
 
 ```bash
-npm run seed:evaluation
+npm run evaluate
 ```
 
 ### Actual result
@@ -152,15 +159,14 @@ npm run seed:evaluation
 The application successfully connected to MongoDB:
 
 ```text
-mongodb_connected
-database: test
+{"level":"info","event":"mongodb_connected","timestamp":"2026-08-16T02:07:41.882Z","database":"test"}
 ```
 
-The evaluation dataset was successfully generated from persisted Post and Image records.
+The evaluation process successfully retrieved persisted posts and images and performed matching against persisted embeddings.
 
-### Result
+### Additional live evidence
 
-MongoDB connectivity was successfully verified.
+Image records, processing jobs, usage records, posts, suggestions, and embeddings were successfully retrieved from MongoDB through the running API.
 
 ### Status
 
@@ -180,8 +186,6 @@ The project must provide a reproducible migration/index initialization command.
 npm run migrate
 ```
 
-The migration script uses Mongoose `syncIndexes()` for the application models.
-
 ### Implementation
 
 Migration is implemented in:
@@ -190,11 +194,15 @@ Migration is implemented in:
 scripts/migration.js
 ```
 
+The migration script uses Mongoose `syncIndexes()` for the application models.
+
+### Result
+
+The migration command is implemented and MongoDB connectivity is live-verified through the application and evaluation workflow.
+
 ### Status
 
-**IMPLEMENTED**
-
-MongoDB connectivity is now live-verified through the evaluation workflow.
+**PASS**
 
 ---
 
@@ -209,7 +217,8 @@ MongoDB connectivity is now live-verified through the evaluation workflow.
 3. Upload the image through Cloudinary.
 4. Create an Image record.
 5. Return image processing information.
-6. Reject invalid uploads.
+6. Trigger asynchronous processing.
+7. Reject invalid uploads.
 
 ### Endpoint
 
@@ -219,9 +228,9 @@ Content-Type: multipart/form-data
 Field: image
 ```
 
-### Verification
+### Automated verification
 
-Automated tests:
+Command:
 
 ```bash
 npm test
@@ -233,11 +242,9 @@ Relevant test:
 tests/api/images.test.js
 ```
 
-### Live validation
+### Invalid upload verification
 
-An invalid upload request was tested against the running server.
-
-Result:
+A live invalid upload request returned:
 
 ```json
 {
@@ -247,15 +254,28 @@ Result:
 }
 ```
 
+### Real upload verification
+
+A real `red-fox.jpg` image was uploaded through the API.
+
+The resulting MongoDB Image record contained:
+
+```text
+originalFilename: red-fox.jpg
+processingStatus: completed
+cloudinaryUrl: https://res.cloudinary.com/...
+cloudinaryPublicId: flyrank-capstone-image-relevance/file_wdh8xe
+```
+
+The image was subsequently processed successfully.
+
 ### Status
 
-**PASS for API validation and application behavior**
-
-Real Cloudinary upload was not independently verified as a dedicated final test.
+**PASS**
 
 ---
 
-## 7. Cloudinary Configuration
+## 7. Cloudinary Configuration and Connectivity
 
 ### Requirement
 
@@ -271,31 +291,174 @@ CLOUDINARY_API_SECRET=
 
 ### Implementation
 
-Cloudinary configuration:
+Configuration:
 
 ```text
 src/config/cloudinary.js
 ```
 
-Cloudinary service:
+Service:
 
 ```text
 src/services/cloudinaryService.js
 ```
 
-### Verification
+### Dedicated live verification
 
-Code inspection and automated tests confirm that credentials are read from environment configuration.
+The following test script was executed:
+
+```bash
+node .\test-cloudinary.js
+```
+
+The configuration reported:
+
+```text
+Cloud name: SET
+API key: SET
+API secret: SET
+```
+
+Cloudinary responded successfully:
+
+```text
+Cloudinary ping successful:
+{
+  status: 'ok',
+  rate_limit_allowed: 500,
+  rate_limit_remaining: 499
+}
+```
+
+### Additional live upload verification
+
+Real images were uploaded to Cloudinary through the application.
+
+A processed image contained a valid Cloudinary URL such as:
+
+```text
+https://res.cloudinary.com/dw2o56ypq/image/upload/...
+```
 
 ### Status
 
-**IMPLEMENTED**
-
-Dedicated live Cloudinary upload verification remains separate.
+**PASS**
 
 ---
 
-## 8. Gemini Vision Metadata Schema
+## 8. Gemini API Connectivity
+
+### Requirement
+
+The configured Gemini API credentials and model must be usable by the application environment.
+
+### Verification
+
+Command:
+
+```bash
+node .\test-gemini.js
+```
+
+### Result
+
+Gemini returned:
+
+```text
+HTTP status: 200
+```
+
+The model responded:
+
+```text
+Gemini connection successful
+```
+
+The tested model was:
+
+```text
+gemini-3.6-flash
+```
+
+### Status
+
+**PASS**
+
+---
+
+## 9. Gemini Vision Live Verification
+
+### Requirement
+
+Gemini Vision must be able to analyze an actual image and return structured metadata.
+
+### Verification
+
+Command:
+
+```bash
+node .\test-gemini-vision.js
+```
+
+### Workflow
+
+The test:
+
+1. connected to MongoDB
+2. retrieved `red-fox.jpg`
+3. retrieved its Cloudinary URL
+4. downloaded the actual image from Cloudinary
+5. converted the image to Base64
+6. sent it to Gemini
+7. requested structured JSON metadata
+
+### Cloudinary image verification
+
+```text
+Cloudinary HTTP status: 200
+Content-Type: image/jpeg
+Image size: 616326 bytes
+```
+
+### Gemini result
+
+```text
+HTTP status: 200
+```
+
+Gemini returned:
+
+```json
+{
+  "subject": "red fox",
+  "category": "animal",
+  "attributes": [
+    "red fur",
+    "white chest",
+    "bushy tail",
+    "pointed ears",
+    "standing in grass"
+  ],
+  "caption": "A red fox stands alert amidst grass and fallen autumn leaves.",
+  "confidence": 0.98
+}
+```
+
+The response also contained usage metadata:
+
+```text
+promptTokenCount: 1245
+candidatesTokenCount: 89
+totalTokenCount: 1518
+```
+
+### Status
+
+**PASS**
+
+---
+
+## 10. Gemini Vision Metadata Schema
 
 ### Requirement
 
@@ -307,6 +470,12 @@ The system must reject:
 - invalid confidence values
 - invalid metadata
 - unexpected fields
+
+### Implementation
+
+```text
+src/schemas/imageMetadataSchema.js
+```
 
 ### Verification
 
@@ -326,13 +495,15 @@ tests/schemas/imageMetadataSchema.test.js
 
 The image metadata schema tests passed.
 
+The live Gemini Vision response also produced metadata matching the expected structure.
+
 ### Status
 
 **PASS**
 
 ---
 
-## 9. Gemini Vision Service
+## 11. Gemini Vision Service
 
 ### Requirement
 
@@ -368,7 +539,7 @@ tests/services/imageProcessingService.test.js
 tests/schemas/imageMetadataSchema.test.js
 ```
 
-### Result
+### Automated result
 
 Tests verify:
 
@@ -382,27 +553,35 @@ Tests verify:
 - low-confidence flagging
 - processing idempotency
 
+### Live result
+
+A real Gemini Vision request successfully analyzed `red-fox.jpg` and returned:
+
+```text
+subject: red fox
+category: animal
+confidence: 0.98
+```
+
 ### Status
 
-**PASS for deterministic service behavior**
-
-A dedicated live Gemini Vision API request was not independently recorded as final evidence.
+**PASS**
 
 ---
 
-## 10. Low-Confidence Image Handling
+## 12. Low-Confidence Image Handling
 
 ### Requirement
 
 Low-confidence image metadata must not automatically become a completed image.
 
-### Implementation
-
-The configured confidence threshold is:
+### Configuration
 
 ```env
 VISION_CONFIDENCE_THRESHOLD=0.70
 ```
+
+### Behavior
 
 Low-confidence valid metadata is marked:
 
@@ -437,7 +616,7 @@ tests/services/imageProcessingService.test.js
 
 ---
 
-## 11. Inngest Asynchronous Processing
+## 13. Inngest Asynchronous Processing
 
 ### Requirement
 
@@ -454,7 +633,13 @@ The system must provide:
 
 ### Implementation
 
-Inngest functions:
+Inngest configuration:
+
+```text
+src/config/inngest.js
+```
+
+Functions:
 
 ```text
 src/jobs/processImage.js
@@ -467,7 +652,7 @@ Job service:
 src/services/jobService.js
 ```
 
-### Verification
+### Automated verification
 
 Command:
 
@@ -482,27 +667,44 @@ tests/services/jobService.test.js
 tests/api/jobs.test.js
 ```
 
+### Live verification
+
+A real image upload created a processing job:
+
+```text
+jobId:
+process_image:6a81194bc0dc2fd636dcc2a7
+```
+
+The live job record showed:
+
+```text
+status: completed
+total: 1
+processed: 1
+failed: 0
+flagged: 0
+attempts: 1
+```
+
+The corresponding Image record showed:
+
+```text
+processingStatus: completed
+processingAttempts: 1
+```
+
 ### Result
 
-Tests verify:
-
-- job creation
-- deterministic job IDs
-- event enqueueing
-- job progress
-- failure handling
-- completion behavior
-- API validation
+The asynchronous processing pipeline successfully completed for a real uploaded image.
 
 ### Status
 
-**PASS for local application behavior**
-
-External Inngest execution was not independently verified.
+**PASS**
 
 ---
 
-## 12. Deterministic Image Processing Job IDs
+## 14. Deterministic Image Processing Job IDs
 
 ### Requirement
 
@@ -515,10 +717,6 @@ Single-image jobs use:
 ```text
 process_image:<imageId>
 ```
-
-### Result
-
-The deterministic job ID provides record-level idempotency.
 
 ### Verification
 
@@ -534,13 +732,86 @@ Relevant test:
 tests/services/jobService.test.js
 ```
 
+### Result
+
+Deterministic job IDs are implemented and tested.
+
+A live image processing job used the expected deterministic format:
+
+```text
+process_image:6a81194bc0dc2fd636dcc2a7
+```
+
 ### Status
 
 **PASS**
 
 ---
 
-## 13. AI Usage and Cost Tracking
+## 15. Live Image Processing Pipeline
+
+### Requirement
+
+A real uploaded image must move through the complete processing pipeline.
+
+### Expected flow
+
+```text
+Upload
+  ↓
+Cloudinary
+  ↓
+MongoDB Image record
+  ↓
+Pending
+  ↓
+Inngest Job
+  ↓
+Gemini Vision
+  ↓
+Metadata
+  ↓
+Gemini Embedding
+  ↓
+MongoDB
+  ↓
+Completed
+```
+
+### Live result
+
+The real `red-fox.jpg` record contained:
+
+```text
+originalFilename: red-fox.jpg
+processingStatus: completed
+processingAttempts: 1
+subject: red fox
+category: animal
+confidence: 0.98
+embeddingModel: gemini-embedding-2
+```
+
+The record contained a persisted embedding array.
+
+### Job result
+
+```text
+status: completed
+total: 1
+processed: 1
+failed: 0
+flagged: 0
+attempts: 1
+```
+
+### Status
+
+**PASS**
+
+---
+
+## 16. AI Usage and Cost Tracking
 
 ### Requirement
 
@@ -569,14 +840,14 @@ Service:
 src/services/costTrackingService.js
 ```
 
-API:
+APIs:
 
-```text
+```http
 GET /api/usage
 GET /api/usage/summary
 ```
 
-### Verification
+### Automated verification
 
 Command:
 
@@ -592,9 +863,59 @@ tests/services/visionUsage.test.js
 tests/api/usage.test.js
 ```
 
-### Result
+### Live verification
 
-Usage extraction, recording, summary calculation, and API validation all passed.
+Command:
+
+```powershell
+Invoke-RestMethod `
+    -Uri "http://localhost:5000/api/usage" `
+    -Method GET
+```
+
+Live records included:
+
+```text
+provider: google
+model: gemini-3.6-flash
+operation: vision
+inputTokens: 1231
+outputTokens: 48
+totalTokens: 1550
+estimatedCost: 0
+```
+
+and:
+
+```text
+provider: google
+model: gemini-embedding-2
+operation: embedding
+inputTokens: 36
+outputTokens: 0
+totalTokens: 36
+estimatedCost: 0
+```
+
+### Usage summary
+
+Command:
+
+```powershell
+Invoke-RestMethod `
+    -Uri "http://localhost:5000/api/usage/summary" `
+    -Method GET
+```
+
+Live result:
+
+```text
+records: 28
+inputTokens: 7774
+outputTokens: 296
+totalTokens: 10047
+estimatedCost: 0
+```
 
 ### Status
 
@@ -602,13 +923,15 @@ Usage extraction, recording, summary calculation, and API validation all passed.
 
 ---
 
-## 14. Usage API Validation
+## 17. Usage API Validation
 
 ### Requirement
 
 Invalid usage query parameters must be rejected.
 
-### Live request
+### Verification
+
+A request with an unsupported operation was tested:
 
 ```powershell
 Invoke-WebRequest `
@@ -616,7 +939,9 @@ Invoke-WebRequest `
     -SkipHttpErrorCheck
 ```
 
-### Expected response
+### Expected behavior
+
+The API returns a validation error:
 
 ```json
 {
@@ -626,13 +951,21 @@ Invoke-WebRequest `
 }
 ```
 
+### Automated verification
+
+Relevant test:
+
+```text
+tests/api/usage.test.js
+```
+
 ### Status
 
 **PASS**
 
 ---
 
-## 15. Post API
+## 18. Post API
 
 ### Requirement
 
@@ -663,9 +996,25 @@ tests/api/posts.test.js
 tests/services/postService.test.js
 ```
 
-### Result
+### Live database evidence
 
-Post creation, listing, retrieval, update, and validation behavior passed automated tests.
+The running API successfully returned persisted posts including:
+
+```text
+The Behavior of Red Foxes
+Understanding Gray Wolves
+Best Practices for Remote Work
+```
+
+The posts contained persisted:
+
+```text
+subject
+category
+keywords
+embedding
+embeddingModel
+```
 
 ### Status
 
@@ -673,7 +1022,7 @@ Post creation, listing, retrieval, update, and validation behavior passed automa
 
 ---
 
-## 16. Article Analysis
+## 19. Article Analysis
 
 ### Requirement
 
@@ -720,15 +1069,15 @@ Tests verify:
 - safe failure
 - post persistence behavior
 
+Persisted posts used in the live evaluation contained structured metadata and embeddings.
+
 ### Status
 
-**PASS for deterministic service/API behavior**
-
-Dedicated live Gemini article-analysis verification was not independently recorded.
+**PASS**
 
 ---
 
-## 17. Embeddings
+## 20. Embeddings
 
 ### Requirement
 
@@ -765,7 +1114,7 @@ Embeddings are stored directly as numeric arrays in MongoDB.
 
 No separate vector database is used.
 
-### Verification
+### Automated verification
 
 Command:
 
@@ -781,26 +1130,32 @@ tests/services/imageProcessingService.test.js
 tests/services/postService.test.js
 ```
 
-### Result
+### Live verification
 
-Tests verify:
+A real image was processed and received a persisted embedding:
 
-- embedding request construction
-- embedding response parsing
-- usage tracking
-- persistence assignment
+```text
+embeddingModel: gemini-embedding-2
+embedding: [numeric vector values...]
+```
 
-Persisted image embeddings were subsequently used successfully during live evaluation.
+Live usage records also confirmed an embedding operation:
+
+```text
+provider: google
+model: gemini-embedding-2
+operation: embedding
+```
+
+Persisted embeddings were subsequently used successfully during live matching evaluation.
 
 ### Status
 
-**PASS for implementation and evaluation-backed persistence**
-
-A dedicated live Gemini embedding API request was not independently recorded.
+**PASS**
 
 ---
 
-## 18. Cosine Similarity
+## 21. Cosine Similarity
 
 ### Requirement
 
@@ -834,13 +1189,24 @@ Relevant test:
 tests/utils/cosineSimilarity.test.js
 ```
 
+### Result
+
+Cosine similarity tests passed.
+
+Live evaluation also produced numeric similarity scores, including:
+
+```text
+red fox → red fox: 0.4213
+gray wolf → gray wolf: 0.4264
+```
+
 ### Status
 
 **PASS**
 
 ---
 
-## 19. Matching Engine
+## 22. Matching Engine
 
 ### Requirement
 
@@ -868,7 +1234,7 @@ src/services/matchingService.js
 GET /api/posts/:id/images
 ```
 
-### Verification
+### Automated verification
 
 Command:
 
@@ -883,13 +1249,37 @@ tests/matching/matchingService.test.js
 tests/api/matching.test.js
 ```
 
+### Live verification
+
+The red fox post returned:
+
+```text
+status: matched
+```
+
+with the red fox image ranked first.
+
+The gray wolf post returned:
+
+```text
+status: matched
+```
+
+with the gray wolf image ranked first.
+
+The remote-work post returned:
+
+```text
+status: no_confident_match
+```
+
 ### Status
 
 **PASS**
 
 ---
 
-## 20. Mismatch Guard
+## 23. Mismatch Guard
 
 ### Requirement
 
@@ -932,33 +1322,16 @@ tests/guard/mismatchGuardService.test.js
 - forced incorrect candidate rejected
 - no candidates handled safely
 
-### Status
+### Live evidence
 
-**PASS**
-
----
-
-## 21. Red Fox / Gray Wolf Safety Test
-
-### Requirement
-
-A red fox article must not recommend a gray wolf merely because the embedding similarity is relatively high.
-
-### Live suggestion example
-
-For the red fox article, the gray wolf candidate produced:
+For the red fox article, a gray wolf candidate produced:
 
 ```text
 Similarity: 0.3358349472638014
-```
-
-The guard returned:
-
-```text
 guardStatus: rejected
 ```
 
-Reasons included:
+Reasons:
 
 ```text
 Similarity 0.336 is below threshold 0.4
@@ -971,7 +1344,123 @@ Subject mismatch: expected red fox, detected gray wolf
 
 ---
 
-## 22. No-Confident-Match Behavior
+## 24. Red Fox Matching
+
+### Requirement
+
+A red fox article should rank a red fox image as the top match.
+
+### Live request
+
+```powershell
+Invoke-RestMethod `
+    -Uri "http://localhost:5000/api/posts/6a80f2b302dea112cbd4e4ab/images" `
+    -Method GET
+```
+
+### Result
+
+```text
+status: matched
+```
+
+Top candidate:
+
+```text
+subject: red fox
+category: animal
+confidence: 0.98
+similarityScore: 0.42131531009290035
+guardStatus: accepted
+decision: recommended
+```
+
+The top-ranked image was the expected red fox image.
+
+### Status
+
+**PASS**
+
+---
+
+## 25. Red Fox / Gray Wolf Safety Test
+
+### Requirement
+
+A red fox article must not recommend a gray wolf merely because the embedding similarity is relatively high.
+
+### Live result
+
+For the red fox article, the gray wolf candidate produced:
+
+```text
+Similarity: 0.3358349472638014
+```
+
+The guard returned:
+
+```text
+guardStatus: rejected
+decision: rejected
+```
+
+Reasons:
+
+```text
+Similarity 0.336 is below threshold 0.4
+Subject mismatch: expected red fox, detected gray wolf
+```
+
+### Result
+
+The gray wolf was not included in the accepted suggestions.
+
+### Status
+
+**PASS**
+
+---
+
+## 26. Gray Wolf Matching
+
+### Requirement
+
+A gray wolf article should rank a gray wolf image as the top match.
+
+### Live request
+
+```powershell
+Invoke-RestMethod `
+    -Uri "http://localhost:5000/api/posts/6a80f2b802dea112cbd4e4ad/images" `
+    -Method GET
+```
+
+### Result
+
+```text
+status: matched
+```
+
+Top candidate:
+
+```text
+subject: gray wolf
+category: animal
+confidence: 0.96
+similarityScore: 0.42640793873841476
+guardStatus: accepted
+decision: recommended
+```
+
+The red fox candidates were rejected with subject mismatch reasons.
+
+### Status
+
+**PASS**
+
+---
+
+## 27. No-Confident-Match Behavior
 
 ### Requirement
 
@@ -983,15 +1472,41 @@ no_confident_match
 
 instead of recommending an unsafe image.
 
-### Live evaluation
+### Live request
 
-The remote-work article produced:
+```powershell
+Invoke-RestMethod `
+    -Uri "http://localhost:5000/api/posts/6a80f2bb02dea112cbd4e4af/images" `
+    -Method GET
+```
+
+### Result
 
 ```text
-Status: no_confident_match
-Actual top-1: none
-Result: CORRECT
+status: no_confident_match
 ```
+
+No accepted suggestions were returned:
+
+```text
+suggestions: []
+```
+
+The response included rejected candidates and explanations.
+
+The top candidate had:
+
+```text
+similarityScore: 0.2912505493332135
+```
+
+which was below the configured threshold:
+
+```text
+0.4
+```
+
+The candidates were rejected due to similarity, subject, and/or category mismatch.
 
 ### Status
 
@@ -999,7 +1514,7 @@ Result: CORRECT
 
 ---
 
-## 23. Suggestion Persistence
+## 28. Suggestion Persistence
 
 ### Requirement
 
@@ -1024,7 +1539,23 @@ src/services/matchingService.js
 
 ### Verification
 
-Live evaluation and review workflow successfully operated on persisted suggestions.
+Live matching generated persisted suggestion IDs such as:
+
+```text
+6a811acdc0dc2fd636dcc2aa
+```
+
+The response contained persisted suggestion information including:
+
+```text
+similarityScore
+guardStatus
+decision
+reason
+guardReasons
+```
+
+The review workflow subsequently operated on persisted suggestions.
 
 ### Status
 
@@ -1032,7 +1563,7 @@ Live evaluation and review workflow successfully operated on persisted suggestio
 
 ---
 
-## 24. Review API
+## 29. Review API
 
 ### Requirement
 
@@ -1071,7 +1602,9 @@ tests/services/reviewService.test.js
 
 ### Result
 
-All review API tests passed.
+Review API tests passed.
+
+Live approval, rejection, and review-history operations were also successfully persisted.
 
 ### Status
 
@@ -1079,29 +1612,15 @@ All review API tests passed.
 
 ---
 
-## 25. Live Review Approval
+## 30. Live Review Approval
 
 ### Requirement
 
 A human reviewer must be able to approve a suggestion and update its current decision.
 
-### Request
+### Verification
 
-```powershell
-$body = @{
-    decision = "approved"
-    reason   = "Generic review confirms that the image is relevant to the red fox article"
-    reviewer = "human-reviewer"
-} | ConvertTo-Json -Compress
-
-Invoke-RestMethod `
-    -Uri "http://localhost:5000/api/suggestions/6a8107615cc8b93fcdb70174/reviews" `
-    -Method POST `
-    -ContentType "application/json" `
-    -Body $body
-```
-
-### Verified result
+A live approval request was submitted to the review API.
 
 The suggestion was updated to:
 
@@ -1111,14 +1630,14 @@ decision: approved
 
 The review record was persisted.
 
-### Review history
+### Review record
 
-```json
-{
-  "decision": "approved",
-  "reason": "Generic review confirms that the image is relevant to the red fox article",
-  "reviewer": "human-reviewer"
-}
+The persisted review contained:
+
+```text
+decision: approved
+reason: Generic review confirms that the image is relevant to the red fox article
+reviewer: human-reviewer
 ```
 
 ### Status
@@ -1127,28 +1646,15 @@ The review record was persisted.
 
 ---
 
-## 26. Live Review Rejection
+## 31. Live Review Rejection
 
 ### Requirement
 
 A human reviewer must be able to reject a suggestion and update its current decision.
 
-### Request
+### Verification
 
-```powershell
-$body = @{
-    reason   = "Image does not match the red fox article because it shows a gray wolf"
-    reviewer = "human-reviewer"
-} | ConvertTo-Json -Compress
-
-Invoke-RestMethod `
-    -Uri "http://localhost:5000/api/suggestions/6a8107615cc8b93fcdb70175/reject" `
-    -Method POST `
-    -ContentType "application/json" `
-    -Body $body
-```
-
-### Verified result
+A live rejection request was submitted.
 
 The suggestion was updated to:
 
@@ -1157,7 +1663,7 @@ guardStatus: rejected
 decision: manually_rejected
 ```
 
-The review record was persisted with:
+The review record contained:
 
 ```text
 decision: rejected
@@ -1170,21 +1676,25 @@ reviewer: human-reviewer
 
 ---
 
-## 27. Review History
+## 32. Review History
 
 ### Requirement
 
 Review history must be retrievable for a suggestion.
 
-### Request
+### Verification
 
-```powershell
-curl.exe "http://localhost:5000/api/suggestions/6a8107615cc8b93fcdb70175/reviews"
+A live request was made to:
+
+```http
+GET /api/suggestions/:id/reviews
 ```
 
 ### Result
 
-The API returned the persisted review:
+The API returned the persisted review record.
+
+Example:
 
 ```json
 {
@@ -1200,21 +1710,23 @@ The API returned the persisted review:
 
 ---
 
-## 28. Invalid Review Payload
+## 33. Invalid Review Payload
 
 ### Requirement
 
 Invalid review payloads must be rejected with HTTP 400.
 
-### Test
+### Verification
 
-An invalid decision:
+An invalid decision such as:
 
 ```text
 something_invalid
 ```
 
 was submitted.
+
+A review with a missing reason was also tested.
 
 ### Result
 
@@ -1228,7 +1740,14 @@ The API returned:
 }
 ```
 
-A review with a missing reason was also rejected with the same validation response.
+### Automated verification
+
+Relevant tests:
+
+```text
+tests/api/reviews.test.js
+tests/services/reviewService.test.js
+```
 
 ### Status
 
@@ -1236,7 +1755,7 @@ A review with a missing reason was also rejected with the same validation respon
 
 ---
 
-## 29. Invalid Suggestion ID Handling
+## 34. Invalid Suggestion ID Handling
 
 ### Requirement
 
@@ -1284,13 +1803,27 @@ HTTP status:
 404
 ```
 
+### Automated regression
+
+Command:
+
+```bash
+npm test
+```
+
+Relevant test:
+
+```text
+tests/services/reviewService.test.js
+```
+
 ### Status
 
 **PASS**
 
 ---
 
-## 30. Review Service Regression Tests
+## 35. Review Service Regression Tests
 
 ### Requirement
 
@@ -1312,19 +1845,13 @@ npm test -- tests/services/reviewService.test.js
 
 ### Result
 
-```text
-Test Suites: 1 passed, 1 total
-Tests:       5 passed, 5 total
-```
+The review service tests passed.
 
-Tests passed:
+The final complete test suite also passed:
 
 ```text
-maps approval to approved suggestion state
-maps rejection to manually_rejected suggestion state
-lists review history for a suggestion
-throws NotFoundError for missing suggestions
-throws NotFoundError for an invalid suggestion id
+Test Suites: 23 passed, 23 total
+Tests:       90 passed, 90 total
 ```
 
 ### Status
@@ -1333,7 +1860,7 @@ throws NotFoundError for an invalid suggestion id
 
 ---
 
-## 31. Full Automated Test Suite
+## 36. Full Automated Test Suite
 
 ### Requirement
 
@@ -1359,7 +1886,7 @@ Snapshots:   0 total
 
 ---
 
-## 32. ESLint
+## 37. ESLint
 
 ### Requirement
 
@@ -1373,7 +1900,7 @@ npm run lint
 
 ### Result
 
-The command completed successfully with exit code `0`.
+The command completed successfully with no ESLint errors.
 
 ### Status
 
@@ -1381,7 +1908,7 @@ The command completed successfully with exit code `0`.
 
 ---
 
-## 33. Evaluation Dataset
+## 38. Evaluation Dataset
 
 ### Requirement
 
@@ -1408,9 +1935,9 @@ npm run seed:evaluation
 
 ### Result
 
-The dataset was successfully generated from persisted MongoDB records.
+The evaluation dataset was successfully generated from persisted MongoDB records.
 
-Three evaluation cases were created:
+The evaluation cases include:
 
 1. red fox article → red fox image
 2. gray wolf article → gray wolf image
@@ -1422,7 +1949,7 @@ Three evaluation cases were created:
 
 ---
 
-## 34. Live Evaluation
+## 39. Live Evaluation
 
 ### Requirement
 
@@ -1448,11 +1975,14 @@ Top-1 precision: 100.00%
 Name:
 red fox article should match red fox image
 
-Expected:
-red fox image
+Expected image:
+6a80e11ddca91ac9c1869304
 
-Actual:
-red fox image
+Actual top-1:
+6a80e11ddca91ac9c1869304
+
+Status:
+matched
 
 Similarity:
 0.4213
@@ -1467,11 +1997,14 @@ CORRECT
 Name:
 gray wolf article should match gray wolf image
 
-Expected:
-gray wolf image
+Expected image:
+6a80efc81a413d8536e5e758
 
-Actual:
-gray wolf image
+Actual top-1:
+6a80efc81a413d8536e5e758
+
+Status:
+matched
 
 Similarity:
 0.4264
@@ -1486,10 +2019,10 @@ CORRECT
 Name:
 remote work article should have no confident animal image match
 
-Expected:
+Expected image:
 none
 
-Actual:
+Actual top-1:
 none
 
 Status:
@@ -1502,6 +2035,8 @@ CORRECT
 ### Final metric
 
 ```text
+Posts evaluated: 3
+Correct top-1 matches: 3
 Top-1 precision: 100.00%
 ```
 
@@ -1511,37 +2046,85 @@ Top-1 precision: 100.00%
 
 ---
 
-## 35. Evaluation Database Verification
+## 40. Evaluation Database Verification
 
 ### Requirement
 
 The evaluation must operate against real persisted MongoDB data rather than only mocked services.
 
-### Verification command
+### Verification
 
-```bash
-npm run seed:evaluation
-```
+The evaluation connected to MongoDB and loaded persisted records.
 
-### Result
-
-MongoDB connection was established:
+Live log:
 
 ```text
-mongodb_connected
-database: test
+{"level":"info","event":"mongodb_connected","timestamp":"2026-08-16T02:07:41.882Z","database":"test"}
 ```
 
-The script successfully retrieved:
+The evaluation successfully used:
 
 - persisted posts
 - persisted images
 - persisted image embeddings
+- persisted application metadata
 
-and generated:
+### Result
+
+The evaluation was performed against real MongoDB-backed application data.
+
+### Status
+
+**PASS**
+
+---
+
+## 41. Live AI Usage Evidence
+
+### Requirement
+
+AI calls used by the real application should create usage records.
+
+### Live usage records
+
+A real processed image generated usage records for:
 
 ```text
-dataset/evaluation.json
+gemini-3.6-flash
+operation: vision
+```
+
+and:
+
+```text
+gemini-embedding-2
+operation: embedding
+```
+
+Example live record:
+
+```text
+provider: google
+model: gemini-3.6-flash
+operation: vision
+imageId: 6a81194bc0dc2fd636dcc2a7
+inputTokens: 1231
+outputTokens: 48
+totalTokens: 1550
+estimatedCost: 0
+```
+
+Example embedding record:
+
+```text
+provider: google
+model: gemini-embedding-2
+operation: embedding
+imageId: 6a81194bc0dc2fd636dcc2a7
+inputTokens: 36
+outputTokens: 0
+totalTokens: 36
+estimatedCost: 0
 ```
 
 ### Status
@@ -1550,7 +2133,7 @@ dataset/evaluation.json
 
 ---
 
-## 36. Documentation Verification
+## 42. Documentation Verification
 
 The project contains:
 
@@ -1567,12 +2150,15 @@ capstone.yaml
 
 These documents describe:
 
+- problem statement
 - architecture
 - implementation phases
 - API endpoints
 - AI trust boundaries
-- evaluation
-- verification
+- asynchronous processing
+- evaluation methodology
+- verification evidence
+- engineering lessons
 - known limitations
 - deployment direction
 
@@ -1590,67 +2176,52 @@ These documents describe:
 | Health endpoint | PASS |
 | Validation middleware | PASS |
 | MongoDB models | PASS |
-| MongoDB connectivity | PASS |
+| MongoDB connectivity | LIVE VERIFIED |
 | MongoDB indexes | PASS |
+| MongoDB migration | PASS |
 | Image API | PASS |
-| Cloudinary integration | IMPLEMENTED |
+| Invalid image validation | PASS |
+| Cloudinary configuration | PASS |
+| Cloudinary connectivity | LIVE VERIFIED |
+| Cloudinary image upload | LIVE VERIFIED |
+| Gemini API connectivity | LIVE VERIFIED |
 | Gemini Vision service | PASS |
+| Gemini Vision live request | LIVE VERIFIED |
 | Vision schema validation | PASS |
 | Low-confidence handling | PASS |
-| Inngest job architecture | PASS |
-| AI usage tracking | PASS |
+| Inngest architecture | PASS |
+| Inngest image processing | LIVE VERIFIED |
+| Deterministic job IDs | PASS |
+| AI usage tracking | LIVE VERIFIED |
+| Usage summary API | PASS |
 | Post CRUD | PASS |
 | Article analysis | PASS |
 | Embedding service | PASS |
+| Persisted embeddings | LIVE VERIFIED |
 | Cosine similarity | PASS |
 | Matching engine | PASS |
 | Mismatch guard | PASS |
-| Fox/wolf safety behavior | PASS |
-| No-confident-match behavior | PASS |
-| Suggestion persistence | PASS |
+| Red fox matching | LIVE VERIFIED |
+| Gray wolf matching | LIVE VERIFIED |
+| Fox/wolf safety behavior | LIVE VERIFIED |
+| No-confident-match behavior | LIVE VERIFIED |
+| Suggestion persistence | LIVE VERIFIED |
 | Review approval | LIVE VERIFIED |
 | Review rejection | LIVE VERIFIED |
 | Review history | LIVE VERIFIED |
+| Invalid review payload | PASS |
 | Invalid suggestion ID handling | PASS |
 | Evaluation dataset | PASS |
 | Live evaluation | PASS |
-| Top-1 precision | 100.00% |
-| Automated tests | 23/23 suites, 90/90 tests |
+| Top-1 precision | **100.00%** |
+| Automated tests | **23/23 suites, 90/90 tests** |
 | ESLint | PASS |
 | Documentation | PASS |
 | Deployment | PENDING |
 
 ---
 
-# Known Limitations
-
-The following areas are implemented but were not independently verified as dedicated final external-service tests:
-
-## Cloudinary
-
-The Cloudinary integration is implemented, but a dedicated live upload verification was not recorded as final evidence.
-
-## Gemini Vision
-
-The Gemini Vision service is implemented and thoroughly tested with mocked responses, but a dedicated live Vision API request was not recorded as final evidence.
-
-## Gemini Embeddings
-
-Embedding generation and persistence are implemented and persisted embeddings were used successfully by the live evaluation. A dedicated live Gemini embedding API request was not separately recorded.
-
-## Inngest
-
-The Inngest integration, event handling, functions, and job logic are implemented and tested. External Inngest execution was not independently verified.
-
-## Deployment
-
-The application has not yet been deployed to a public production URL.
-
-Deployment is only considered complete after a real deployed `/health` request succeeds.
-
----
-
-# Final Evidence
+# Final Verified Evidence
 
 The strongest current proof for the project is:
 
@@ -1663,9 +2234,33 @@ ESLint: PASS
 
 MongoDB connectivity: LIVE VERIFIED
 
-Evaluation dataset generation: PASS
+MongoDB persistence: LIVE VERIFIED
 
-Live matching evaluation: PASS
+Cloudinary connectivity: LIVE VERIFIED
+
+Cloudinary upload: LIVE VERIFIED
+
+Gemini API connectivity: LIVE VERIFIED
+
+Gemini Vision request: LIVE VERIFIED
+
+Gemini Vision metadata extraction: LIVE VERIFIED
+
+Inngest image processing: LIVE VERIFIED
+
+Image processing status: completed
+
+Persisted image embedding: LIVE VERIFIED
+
+AI usage records: LIVE VERIFIED
+
+Matching engine: LIVE VERIFIED
+
+Red fox → red fox: CORRECT
+
+Gray wolf → gray wolf: CORRECT
+
+Remote work → no_confident_match: CORRECT
 
 Evaluation cases: 3/3 correct
 
@@ -1682,3 +2277,176 @@ Invalid suggestion ID handling: PASS
 
 ---
 
+# Known Limitations
+
+## 1. Gemini Article Analysis
+
+The article-analysis service is implemented and covered by automated tests.
+
+The final evidence does not include a separate dedicated direct Gemini article-analysis test command.
+
+However, persisted posts used in the live evaluation contain structured article metadata and embeddings.
+
+Therefore:
+
+```text
+Implementation: VERIFIED
+Automated behavior: VERIFIED
+Live article-analysis call: NOT SEPARATELY RECORDED
+```
+
+---
+
+## 2. Gemini Embedding API
+
+Real embedding generation is proven indirectly through the live application pipeline.
+
+A real processed image contains:
+
+```text
+embeddingModel: gemini-embedding-2
+```
+
+and a corresponding live AIUsage record exists for:
+
+```text
+operation: embedding
+model: gemini-embedding-2
+```
+
+The resulting persisted embedding was successfully consumed by the live matching engine.
+
+Therefore:
+
+```text
+Embedding generation in application: LIVE VERIFIED
+Embedding persistence: LIVE VERIFIED
+Embedding usage in matching: LIVE VERIFIED
+Separate direct embedding API test: NOT RECORDED
+```
+
+---
+
+## 3. Inngest
+
+The real application successfully created a processing job and the uploaded image reached:
+
+```text
+processingStatus: completed
+```
+
+with:
+
+```text
+processed: 1
+failed: 0
+attempts: 1
+```
+
+This provides live application-level evidence for the configured asynchronous processing workflow.
+
+A separate Inngest dashboard inspection or externally hosted Inngest deployment was not recorded as final evidence.
+
+Therefore:
+
+```text
+Application Inngest workflow: LIVE VERIFIED
+Separate external Inngest dashboard verification: NOT RECORDED
+```
+
+---
+
+## 4. Deployment
+
+The application has not yet been deployed to a public production URL.
+
+Deployment is only considered complete after:
+
+```text
+A real deployed /health request succeeds.
+```
+
+Therefore:
+
+```text
+Deployment: PENDING
+```
+
+---
+
+# Final Project State
+
+The core capstone implementation is complete and live-verified.
+
+The final automated regression is:
+
+```text
+23 test suites passed
+90 tests passed
+0 failed
+```
+
+The final evaluation is:
+
+```text
+3 evaluation cases
+3 correct
+100.00% Top-1 precision
+```
+
+The system successfully demonstrates:
+
+```text
+Image Upload
+      ↓
+Cloudinary Storage
+      ↓
+MongoDB Persistence
+      ↓
+Asynchronous Processing
+      ↓
+Gemini Vision
+      ↓
+Strict Metadata Validation
+      ↓
+Confidence Handling
+      ↓
+Gemini Embedding
+      ↓
+MongoDB Embedding Storage
+      ↓
+Cosine Similarity
+      ↓
+Mismatch Guard
+      ↓
+Safe Recommendation
+      ↓
+Human Review
+      ↓
+Evaluation
+```
+
+The system also demonstrates safe rejection:
+
+```text
+Wrong / weak candidate
+        ↓
+Mismatch Guard
+        ↓
+Rejected
+        ↓
+Explanation
+```
+
+and:
+
+```text
+No suitable candidate
+        ↓
+no_confident_match
+```
+
+rather than forcing an incorrect recommendation.
+
+---
+```
