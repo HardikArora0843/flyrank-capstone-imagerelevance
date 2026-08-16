@@ -31,6 +31,10 @@ app.use(
   })
 );
 
+app.get('/', (req, res) => {
+  res.redirect('/health');
+});
+
 app.use('/health', healthRoutes);
 app.use('/api/images', imageRoutes);
 app.use('/api/jobs', jobRoutes);
@@ -38,7 +42,13 @@ app.use('/api/posts', postRoutes);
 app.use('/api/posts/:id', matchingRoutes);
 app.use('/api/suggestions', reviewRoutes);
 app.use('/api/usage', usageRoutes);
-app.use('/api/inngest', serve({ client: inngest, functions: inngestFunctions }));
+app.use(
+  '/api/inngest',
+  serve({
+    client: inngest,
+    functions: inngestFunctions
+  })
+);
 
 app.use(notFound);
 app.use(errorHandler);
