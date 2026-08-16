@@ -13,7 +13,7 @@ async function startServer() {
   try {
     await connectDB();
 
-    server = app.listen(port, () => {
+    server = app.listen(port, '0.0.0.0', () => {
       logger.info('server_started', { port });
     });
   } catch (error) {
