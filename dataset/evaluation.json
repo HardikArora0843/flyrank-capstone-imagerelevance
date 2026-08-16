@@ -1,0 +1,17 @@
+[
+  {
+    "name": "red fox article should match red fox image",
+    "postId": "6a80f2b302dea112cbd4e4ab",
+    "expectedImageId": "6a80e11ddca91ac9c1869304"
+  },
+  {
+    "name": "gray wolf article should match gray wolf image",
+    "postId": "6a80f2b802dea112cbd4e4ad",
+    "expectedImageId": "6a80efc81a413d8536e5e758"
+  },
+  {
+    "name": "remote work article should have no confident animal image match",
+    "postId": "6a80f2bb02dea112cbd4e4af",
+    "expectedImageId": null
+  }
+]

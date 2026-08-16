@@ -1,0 +1,21 @@
+run: npm run dev
+seed: npm run seed
+test: npm test
+migrate: npm run migrate
+evaluate: npm run evaluate
+base_url: http://localhost:5000
+endpoints:
+  - /health
+  - /api/images
+  - /api/posts
+  - /api/posts/:id
+  - /api/posts/:id/images
+  - /api/jobs/:id
+  - /api/jobs/process-pending-images
+  - /api/inngest
+  - /api/usage
+  - /api/usage/summary
+  - /api/suggestions/:id
+  - /api/suggestions/:id/reviews
+  - /api/suggestions/:id/approve
+  - /api/suggestions/:id/reject
