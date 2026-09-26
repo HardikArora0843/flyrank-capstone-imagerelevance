@@ -1,4 +1,4 @@
-# FlyRank AI Capstone 3: Image Relevance and Auto-Tagging
+# FlyRank AI Capstone: Image Relevance and Auto-Tagging
 
 Backend service for AI-powered image understanding, metadata extraction, semantic image-to-post matching, mismatch detection, human review, asynchronous processing, usage tracking, and evaluation.
 
